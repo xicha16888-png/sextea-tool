@@ -432,3 +432,78 @@ app.get('/api/system-check', (req, res) => {
 });
 
 app.listen(3099, () => console.log('OK: http://localhost:3099'));
+
+// ===== 视频拼接合并 =====
+app.post('/api/concat-videos', async (req, res) => {
+  const files = [];
+  try {
+    const { videos_b64, narration_url, music_url, music_b64, music_volume, narration_volume, original_volume } = req.body;
+    if (!videos_b64 || videos_b64.length < 2) throw new Error('请至少上传2段视频');
+    if (!checkFFmpeg()) throw new Error('FFmpeg 未安装');
+
+    // 写入所有视频
+    const videoFiles = [];
+    for (let i = 0; i < videos_b64.length; i++) {
+      const f = b64toFile(videos_b64[i], 'mp4');
+      files.push(f);
+      // 统一编码格式，避免拼接失败
+      const reencoded = path.join(TMP, `re_${i}_${Date.now()}.mp4`);
+      files.push(reencoded);
+      execSync(`ffmpeg -y -i "${f}" -c:v libx264 -preset fast -crf 23 -an "${reencoded}"`, { timeout: 60000 });
+      videoFiles.push(reencoded);
+    }
+
+    // 生成 concat list
+    const listFile = path.join(TMP, `list_${Date.now()}.txt`);
+    files.push(listFile);
+    fs.writeFileSync(listFile, videoFiles.map(f => `file '${f}'`).join('\n'));
+
+    // 拼接视频
+    const concatFile = path.join(TMP, `concat_${Date.now()}.mp4`);
+    files.push(concatFile);
+    execSync(`ffmpeg -y -f concat -safe 0 -i "${listFile}" -c copy "${concatFile}"`, { timeout: 120000 });
+
+    // 加音频
+    const outputFile = path.join(TMP, `output_${Date.now()}.mp4`);
+    files.push(outputFile);
+
+    const narVol = narration_volume || 1.0;
+    const bgVol = music_volume || 0.3;
+    const origVol = original_volume || 0.0;
+
+    const hasBg = music_url || music_b64;
+    const hasNar = narration_url;
+
+    if (hasBg && hasNar) {
+      let bgFile;
+      if (music_b64) { bgFile = b64toFile(music_b64, 'mp3'); } 
+      else { bgFile = await urlToFile(music_url, 'mp3'); }
+      files.push(bgFile);
+      const narFile = await urlToFile(narration_url, 'wav');
+      files.push(narFile);
+      execSync(`ffmpeg -y -i "${concatFile}" -i "${bgFile}" -i "${narFile}" -filter_complex "[0:a]volume=${origVol}[orig];[1:a]volume=${bgVol},aloop=loop=-1:size=2e+09,afade=t=in:st=0:d=1,afade=t=out:st=25:d=2[bg];[2:a]volume=${narVol}[nar];[orig][bg][nar]amix=inputs=3:duration=first[aout]" -map 0:v -map "[aout]" -c:v copy -c:a aac -shortest "${outputFile}"`, { timeout: 120000 });
+    } else if (hasBg) {
+      let bgFile;
+      if (music_b64) { bgFile = b64toFile(music_b64, 'mp3'); }
+      else { bgFile = await urlToFile(music_url, 'mp3'); }
+      files.push(bgFile);
+      execSync(`ffmpeg -y -i "${concatFile}" -i "${bgFile}" -filter_complex "[0:a]volume=${origVol}[orig];[1:a]volume=${bgVol},aloop=loop=-1:size=2e+09,afade=t=in:st=0:d=1,afade=t=out:st=25:d=2[bg];[orig][bg]amix=inputs=2:duration=first[aout]" -map 0:v -map "[aout]" -c:v copy -c:a aac -shortest "${outputFile}"`, { timeout: 120000 });
+    } else if (hasNar) {
+      const narFile = await urlToFile(narration_url, 'wav');
+      files.push(narFile);
+      execSync(`ffmpeg -y -i "${concatFile}" -i "${narFile}" -filter_complex "[1:a]volume=${narVol}[nar]" -map 0:v -map "[nar]" -c:v copy -c:a aac -shortest "${outputFile}"`, { timeout: 120000 });
+    } else {
+      // 纯拼接无音频
+      fs.copyFileSync(concatFile, outputFile);
+    }
+
+    const resultB64 = fileToB64(outputFile);
+    const totalDuration = videoFiles.length * 6; // 估算
+    res.json({ status: 'succeeded', output: resultB64, segments: videos_b64.length });
+
+  } catch(e) {
+    res.status(500).json({ detail: e.message });
+  } finally {
+    files.forEach(f => { try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch {} });
+  }
+});
