@@ -3,346 +3,1087 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI 生图工具</title>
+<title>AI 创作工具</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0c0c0c;color:#f5f5f5;font-family:sans-serif;min-height:100vh;display:grid;grid-template-columns:380px 1fr;grid-template-rows:56px 1fr}
-header{grid-column:1/-1;background:#141414;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;padding:0 24px;gap:12px}
-aside{background:#141414;border-right:1px solid rgba(255,255,255,0.08);padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
-.lbl{font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
-textarea,input,select{width:100%;background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#f5f5f5;font-size:13px;padding:10px 12px;outline:none;font-family:inherit}
+:root{
+  --bg:#080808;--s1:#111;--s2:#1a1a1a;--s3:#222;--s4:#2a2a2a;
+  --b1:rgba(255,255,255,0.06);--b2:rgba(255,255,255,0.11);--b3:rgba(255,255,255,0.18);
+  --t1:#f0f0f0;--t2:#888;--t3:#555;--t4:#333;
+  --ac:#e8ff4a;--ac2:rgba(232,255,74,0.12);
+  --blue:#4a9eff;--green:#4aff88;--red:#ff4a4a;--orange:#ffaa4a;--purple:#aa4aff;
+  --r:10px
+}
+body{background:var(--bg);color:var(--t1);font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;height:100vh;display:grid;grid-template-columns:420px 1fr;grid-template-rows:52px 1fr;overflow:hidden}
+
+/* ===== HEADER ===== */
+header{grid-column:1/-1;background:var(--s1);border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 16px;gap:10px;z-index:10}
+.logo{width:28px;height:28px;background:var(--ac);border-radius:8px;display:grid;place-items:center;flex-shrink:0;font-size:14px}
+.app-name{font-size:14px;font-weight:700;letter-spacing:-0.5px}
+.app-version{font-size:10px;color:var(--t3);margin-top:1px}
+.nav{display:flex;gap:2px;margin-left:16px}
+.nav-btn{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--t3);border:none;background:transparent;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:6px}
+.nav-btn.active{background:var(--s3);color:var(--t1)}
+.nav-btn:hover:not(.active){color:var(--t2)}
+.nav-dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5}
+.nav-btn.active .nav-dot{opacity:1}
+.header-stats{margin-left:auto;display:flex;gap:8px;align-items:center}
+.stat-badge{font-size:11px;color:var(--t3);padding:4px 10px;background:var(--s2);border-radius:20px;border:1px solid var(--b1)}
+.stat-badge.warn{color:var(--orange)}
+
+/* ===== SIDEBAR ===== */
+aside{background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-direction:column;overflow:hidden}
+.panel{flex:1;overflow-y:auto;padding:16px;display:none;flex-direction:column;gap:14px}
+.panel.show{display:flex}
+.panel::-webkit-scrollbar{width:3px}
+.panel::-webkit-scrollbar-thumb{background:var(--s3);border-radius:2px}
+
+/* 子导航 */
+.sub-nav{display:flex;gap:3px;background:var(--bg);border-radius:var(--r);padding:3px;flex-shrink:0}
+.sub-btn{flex:1;padding:7px 4px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;color:var(--t3);border:none;background:transparent;font-family:inherit;transition:all .15s;text-align:center}
+.sub-btn.active{background:var(--s2);color:var(--t1)}
+.sub-btn:hover:not(.active){color:var(--t2)}
+
+/* 表单元素 */
+.sec{display:none;flex-direction:column;gap:12px}
+.sec.show{display:flex}
+.field-label{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:6px}
+textarea,input[type=text],input[type=number],input[type=url]{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-size:13px;padding:9px 12px;outline:none;font-family:inherit;transition:border-color .2s}
 textarea{resize:none;line-height:1.6}
-#prompt{height:100px}
-#neg{height:60px;font-size:12px}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.opt label{font-size:11px;color:#555;display:block;margin-bottom:5px}
-.sr{display:flex;gap:8px}
-.sr input{flex:1}
-.rb{background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#888;width:36px;height:36px;cursor:pointer;font-size:18px;flex-shrink:0}
-.gb{width:100%;background:#e8ff4a;color:#0c0c0c;border:none;border-radius:12px;padding:12px;font-size:15px;font-weight:700;cursor:pointer}
-.gb:disabled{background:#2a2a2a;color:#555;cursor:not-allowed}
-.tab-bar{display:flex;gap:4px;background:#0c0c0c;border-radius:10px;padding:4px}
-.tab{flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:#555;font-family:inherit;transition:all .15s}
-.tab.active{background:#1c1c1c;color:#f5f5f5}
-.tab-content{display:none}
-.tab-content.active{display:flex;flex-direction:column;gap:14px}
-.upload-zone{border:2px dashed rgba(255,255,255,0.14);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:border-color .15s;position:relative}
-.upload-zone:hover{border-color:#e8ff4a}
+textarea:focus,input:focus{border-color:rgba(232,255,74,.4)}
+textarea::placeholder,input::placeholder{color:var(--t3)}
+select{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-size:13px;padding:9px 12px;outline:none;cursor:pointer;appearance:none;font-family:inherit}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* 按钮 */
+.btn{width:100%;border:none;border-radius:var(--r);padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-ac{background:var(--ac);color:#080808}
+.btn-ac:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-ac:disabled{background:var(--s3);color:var(--t3);cursor:not-allowed;transform:none;filter:none}
+.btn-ghost{background:transparent;border:1px solid var(--b2);color:var(--t2)}
+.btn-ghost:hover{color:var(--t1);border-color:var(--b3)}
+.btn-blue{background:rgba(74,158,255,.15);border:1px solid rgba(74,158,255,.3);color:var(--blue)}
+.btn-blue:hover{background:rgba(74,158,255,.25)}
+.btn-red{background:rgba(255,74,74,.1);border:1px solid rgba(255,74,74,.25);color:var(--red)}
+.btn-orange{background:rgba(255,170,74,.1);border:1px solid rgba(255,170,74,.25);color:var(--orange)}
+.btn-purple{background:rgba(170,74,255,.15);border:1px solid rgba(170,74,255,.3);color:var(--purple)}
+
+/* 上传区 */
+.upload-zone{border:1.5px dashed var(--b2);border-radius:var(--r);padding:16px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--s2)}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--ac);background:var(--ac2)}
 .upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
-.upload-zone img{max-width:100%;max-height:160px;border-radius:8px;margin-top:12px;display:none}
-.upload-txt{font-size:13px;color:#555}
-.strength-row{display:flex;align-items:center;gap:10px}
-.strength-row input[type=range]{flex:1;height:4px}
-.strength-val{font-size:12px;color:#888;min-width:32px;text-align:right}
-.action-bar{display:flex;gap:8px}
-.action-bar button{flex:1;background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#888;padding:9px;font-size:13px;cursor:pointer;font-family:inherit}
-.action-bar button:hover{color:#f5f5f5}
-.action-bar button.primary{background:#e8ff4a;color:#0c0c0c;border-color:#e8ff4a;font-weight:700}
-main{background:#0c0c0c;display:flex;flex-direction:column;overflow-y:auto}
-.canvas{flex:1;display:flex;align-items:center;justify-content:center;padding:32px;min-height:400px}
-.empty{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
-.pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
-.pill{background:#141414;border:1px solid rgba(255,255,255,0.14);border-radius:20px;padding:5px 13px;font-size:12px;color:#888;cursor:pointer}
-.pill:hover{color:#f5f5f5;border-color:#e8ff4a}
-.ld{display:none;flex-direction:column;align-items:center;gap:16px;text-align:center}
-.ring{width:56px;height:56px;border:2px solid rgba(255,255,255,0.1);border-top-color:#e8ff4a;border-radius:50%;animation:spin .9s linear infinite}
+.upload-icon{font-size:24px;margin-bottom:6px;opacity:.35}
+.upload-txt{font-size:11px;color:var(--t3);line-height:1.6}
+.upload-preview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.up-thumb{position:relative}
+.up-thumb img,.up-thumb video{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;border:1px solid var(--b2);display:block}
+.up-rm{position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:var(--red);border-radius:50%;border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.up-order{position:absolute;bottom:2px;left:2px;background:rgba(0,0,0,.7);color:#fff;font-size:9px;padding:1px 4px;border-radius:3px}
+
+/* 提示词胶囊 */
+.pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.pill{background:var(--s3);border:1px solid var(--b1);border-radius:20px;padding:3px 9px;font-size:10px;color:var(--t3);cursor:pointer;transition:all .15s;white-space:nowrap}
+.pill:hover{color:var(--t1);border-color:var(--ac);background:var(--ac2)}
+
+/* 滑块 */
+.slider-wrap{display:flex;align-items:center;gap:8px}
+.slider-wrap input[type=range]{flex:1;accent-color:var(--ac);height:3px}
+.slider-lbl{font-size:11px;color:var(--t3);white-space:nowrap}
+.slider-val{font-size:11px;color:var(--t2);min-width:32px;text-align:right}
+
+/* 提示框 */
+.tip{border-radius:8px;padding:10px 12px;font-size:11px;line-height:1.7}
+.tip-info{background:rgba(74,158,255,.06);border:1px solid rgba(74,158,255,.18);color:#8bc4ff}
+.tip-warn{background:rgba(255,170,74,.06);border:1px solid rgba(255,170,74,.18);color:#ffc87a}
+.tip-green{background:rgba(74,255,136,.06);border:1px solid rgba(74,255,136,.18);color:#7affa0}
+
+/* 分割线 */
+.divider{height:1px;background:var(--b1);margin:4px 0}
+
+/* ===== MAIN CANVAS ===== */
+main{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.canvas{flex:1;display:flex;align-items:center;justify-content:center;padding:32px;overflow-y:auto;position:relative}
+
+/* 空状态 */
+.empty{text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px}
+.empty-icon{font-size:52px;opacity:.1}
+.empty-title{font-size:18px;font-weight:500;color:var(--t3)}
+.empty-sub{font-size:12px;color:var(--t4);line-height:1.8;max-width:360px}
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;max-width:320px}
+.qcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:10px 12px;cursor:pointer;text-align:left;transition:all .15s}
+.qcard:hover{border-color:var(--b3);background:var(--s2)}
+.qcard-icon{font-size:18px;margin-bottom:4px}
+.qcard-title{font-size:12px;font-weight:600;color:var(--t2);margin-bottom:2px}
+.qcard-sub{font-size:10px;color:var(--t3)}
+
+/* 加载 */
+.loading{display:none;flex-direction:column;align-items:center;gap:20px;text-align:center;max-width:380px;width:100%}
+.l-ring{width:56px;height:56px;border:2px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.res{display:none;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:520px}
-.res img{width:100%;border-radius:12px;border:1px solid rgba(255,255,255,0.1);cursor:pointer}
-.acts{display:flex;gap:10px;width:100%}
-.ab{flex:1;background:#141414;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#888;padding:9px;font-size:13px;cursor:pointer;text-align:center;text-decoration:none;display:block;font-family:inherit}
-.ab:hover{color:#f5f5f5}
-.err{display:none;background:rgba(200,50,50,.1);border:1px solid rgba(200,50,50,.25);border-radius:12px;padding:16px;font-size:13px;color:#f88;text-align:center;max-width:380px}
-.interrogate-result{background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:10px;padding:14px;font-size:13px;line-height:1.7;color:#ddd;display:none;word-break:break-all}
-.copy-prompt-btn{width:100%;background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#888;padding:9px;font-size:12px;cursor:pointer;display:none;font-family:inherit;margin-top:6px}
-.copy-prompt-btn:hover{color:#f5f5f5}
-.history-section{background:#0a0a0a;border-top:1px solid rgba(255,255,255,0.06);padding:16px 24px}
-.history-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.history-title{font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:1px}
-.clear-btn{font-size:11px;color:#444;cursor:pointer;background:none;border:none;font-family:inherit}
-.clear-btn:hover{color:#f88}
-.hist-grid{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
-.hist-grid::-webkit-scrollbar{height:4px}
-.hist-grid::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
-.hist-item img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:2px solid transparent;cursor:pointer;display:block}
-.hist-item img:hover{border-color:#e8ff4a}
-.hist-empty{font-size:12px;color:#333;padding:8px 0}
-.preview-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:16px}
-.preview-overlay.show{display:flex}
-.preview-overlay img{max-width:90vw;max-height:80vh;border-radius:12px}
-.preview-close{position:absolute;top:20px;right:24px;color:#888;font-size:28px;cursor:pointer;background:none;border:none}
-.pacts{display:flex;gap:12px}
-.pacts a,.pacts button{background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#f5f5f5;padding:8px 20px;font-size:13px;cursor:pointer;text-decoration:none;font-family:inherit}
+.l-title{font-size:15px;color:var(--t2);font-weight:500}
+.l-sub{font-size:12px;color:var(--t3);line-height:1.7}
+.l-timer{font-size:22px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums}
+.l-progress{width:100%;height:3px;background:var(--s3);border-radius:2px;overflow:hidden}
+.l-prog-fill{height:100%;background:var(--ac);border-radius:2px;transition:width .8s ease}
+.l-steps{width:100%;display:flex;flex-direction:column;gap:5px}
+.lstep{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--t3);padding:5px 10px;border-radius:6px}
+.lstep.active{color:var(--t1);background:var(--s2)}
+.lstep.done{color:var(--green)}
+.lstep::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+/* 结果 */
+.result{display:none;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:900px}
+
+/* 图片网格 */
+.img-grid{display:grid;gap:10px;width:100%}
+.img-grid.c1{grid-template-columns:1fr;max-width:500px;margin:0 auto}
+.img-grid.c2{grid-template-columns:1fr 1fr}
+.img-grid.c4{grid-template-columns:1fr 1fr}
+.img-card{position:relative;border-radius:var(--r);overflow:hidden;background:var(--s1);cursor:pointer;group:true}
+.img-card img{width:100%;display:block}
+.img-ov{position:absolute;inset:0;background:linear-gradient(transparent 40%,rgba(0,0,0,.85));opacity:0;transition:opacity .2s;display:flex;align-items:flex-end;padding:10px;gap:6px}
+.img-card:hover .img-ov{opacity:1}
+.ov-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#fff;font-size:11px;padding:5px 10px;cursor:pointer;backdrop-filter:blur(4px);text-decoration:none;font-family:inherit;white-space:nowrap}
+.ov-btn:hover{background:rgba(255,255,255,.22)}
+
+/* 视频播放器 */
+.vid-player{width:100%;border-radius:12px;overflow:hidden;background:#000;border:1px solid var(--b2)}
+.vid-player video{width:100%;display:block;max-height:62vh}
+.vid-info{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--s1);font-size:12px;color:var(--t2)}
+
+/* 多视频网格 */
+.multi-vid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;width:100%}
+.vid-card{border-radius:var(--r);overflow:hidden;background:var(--s1);border:1px solid var(--b1)}
+.vid-card video{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.vid-card-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
+.vid-card-num{font-size:11px;color:var(--t3)}
+
+/* 剪辑时间轴 */
+.timeline{width:100%;background:var(--s1);border-radius:var(--r);overflow:hidden;border:1px solid var(--b1)}
+.tl-header{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--b1);gap:10px}
+.tl-title{font-size:12px;font-weight:600;color:var(--t2)}
+.tl-body{padding:12px;display:flex;flex-direction:column;gap:8px}
+.tl-track{display:flex;align-items:center;gap:10px}
+.tl-track-label{font-size:10px;color:var(--t3);width:40px;flex-shrink:0;text-align:right}
+.tl-clips{flex:1;height:36px;background:var(--bg);border-radius:6px;position:relative;overflow:hidden;border:1px solid var(--b1)}
+.tl-clip{position:absolute;top:2px;bottom:2px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;cursor:pointer;overflow:hidden;transition:all .15s}
+.tl-clip:hover{filter:brightness(1.2)}
+.tl-clip-vid{background:rgba(74,158,255,.35);border:1px solid rgba(74,158,255,.5);color:var(--blue)}
+.tl-clip-aud{background:rgba(74,255,136,.25);border:1px solid rgba(74,255,136,.4);color:var(--green)}
+.tl-clip-txt{background:rgba(255,170,74,.25);border:1px solid rgba(255,170,74,.4);color:var(--orange)}
+.tl-cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--ac);pointer-events:none}
+
+/* 结果操作栏 */
+.result-bar{display:flex;gap:8px;width:100%;max-width:900px}
+.rbar-btn{flex:1;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t2);padding:9px;font-size:12px;cursor:pointer;text-align:center;text-decoration:none;display:block;font-family:inherit;transition:all .15s}
+.rbar-btn:hover{color:var(--t1);border-color:var(--b2)}
+.rbar-btn.primary{background:var(--ac);color:#080808;border-color:var(--ac);font-weight:700}
+.result-meta{font-size:11px;color:var(--t3)}
+.result-meta b{color:var(--t2)}
+
+/* 错误 */
+.err-box{display:none;background:rgba(255,74,74,.06);border:1px solid rgba(255,74,74,.18);border-radius:var(--r);padding:14px 18px;font-size:12px;color:#f88;text-align:center;max-width:420px;line-height:1.7}
+
+/* 历史栏 */
+.hist-bar{background:var(--s1);border-top:1px solid var(--b1);padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;min-height:76px}
+.hist-label{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+.hist-scroll{flex:1;display:flex;gap:7px;overflow-x:auto;padding:2px 0}
+.hist-scroll::-webkit-scrollbar{height:2px}
+.hist-scroll::-webkit-scrollbar-thumb{background:var(--s3)}
+.hist-img{width:54px;height:54px;object-fit:cover;border-radius:7px;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:border-color .15s}
+.hist-img:hover{border-color:var(--ac)}
+.hist-vid{width:76px;height:48px;object-fit:cover;border-radius:7px;border:2px solid transparent;cursor:pointer;flex-shrink:0;background:#000;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.hist-vid video{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.hist-vid-play{position:absolute;color:rgba(255,255,255,.8);font-size:16px}
+.hist-vid:hover{border-color:var(--ac)}
+.hist-empty{font-size:11px;color:var(--t4);padding:4px 0}
+.hist-clear{font-size:10px;color:var(--t4);cursor:pointer;background:none;border:none;font-family:inherit;flex-shrink:0}
+.hist-clear:hover{color:var(--red)}
+
+/* 预览弹窗 */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.modal.open{display:flex}
+.modal-close{position:absolute;top:16px;right:16px;background:var(--s2);border:1px solid var(--b2);color:var(--t1);width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;display:grid;place-items:center}
+.modal-media{max-width:94vw;max-height:82vh;border-radius:12px}
+.modal-media video{max-width:94vw;max-height:82vh;border-radius:12px}
+.modal-bar{display:flex;gap:10px}
+.modal-btn{background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--t1);padding:8px 20px;font-size:12px;cursor:pointer;text-decoration:none;font-family:inherit}
+
+/* 分析结果 */
+.analysis-box{width:100%;max-width:600px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:16px}
+.analysis-section{margin-bottom:14px}
+.analysis-section:last-child{margin-bottom:0}
+.analysis-section-title{font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.analysis-text{font-size:12px;color:var(--t2);line-height:1.8;white-space:pre-wrap}
+.analysis-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.aact-btn{background:var(--s2);border:1px solid var(--b2);border-radius:7px;color:var(--t2);padding:7px 14px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s}
+.aact-btn:hover{color:var(--t1)}
+.aact-btn.ac{background:var(--ac);color:#080808;border-color:var(--ac);font-weight:700}
 </style>
 </head>
 <body>
+
 <header>
-  <div style="width:10px;height:10px;background:#e8ff4a;border-radius:50%"></div>
-  <span style="font-size:15px;font-weight:600">AI 生图工具</span>
-  <span style="font-size:12px;color:#555;margin-left:4px">· Replicate Flux</span>
+  <div class="logo">✦</div>
+  <div><div class="app-name">AI 创作工具</div><div class="app-version">PRO · Powered by Replicate</div></div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="goTo('img',this)"><div class="nav-dot"></div>图片生成</button>
+    <button class="nav-btn" onclick="goTo('video',this)"><div class="nav-dot"></div>视频生成</button>
+    <button class="nav-btn" onclick="goTo('edit',this)"><div class="nav-dot"></div>视频剪辑</button>
+    <button class="nav-btn" onclick="goTo('tools',this)"><div class="nav-dot"></div>AI 工具</button>
+  </nav>
+  <div class="header-stats">
+    <div class="stat-badge" id="costBadge">消耗 $0.000</div>
+    <div class="stat-badge" id="histCount">历史 0</div>
+  </div>
 </header>
 
+<!-- ============================================================ -->
+<!-- 图片生成侧边栏 -->
+<!-- ============================================================ -->
 <aside>
-  <!-- 标签切换 -->
-  <div class="tab-bar">
-    <button class="tab active" onclick="switchTab('txt2img',this)">文字生图</button>
-    <button class="tab" onclick="switchTab('img2img',this)">图生图</button>
-    <button class="tab" onclick="switchTab('interrogate',this)">反推提示词</button>
+<div class="panel show" id="panel-img">
+  <div class="sub-nav">
+    <button class="sub-btn active" onclick="subNav('img','t2i',this)">文字生图</button>
+    <button class="sub-btn" onclick="subNav('img','i2i',this)">图生图</button>
   </div>
-
   <!-- 文字生图 -->
-  <div class="tab-content active" id="tab-txt2img">
-    <div><div class="lbl">图片描述</div><textarea id="prompt" placeholder="A beautiful woman in a cafe, natural light, cinematic..."></textarea></div>
-    <div><div class="lbl">不要的内容</div><textarea id="neg" placeholder="blur, low quality, watermark..."></textarea></div>
-    <div><div class="lbl">参数</div><div class="g2">
-      <div class="opt"><label>比例</label><select id="ratio"><option value="1:1">正方形 1:1</option><option value="16:9">横版 16:9</option><option value="9:16" selected>竖版 9:16</option><option value="4:3">4:3</option><option value="3:4">3:4</option></select></div>
-      <div class="opt"><label>数量</label><select id="count"><option value="1" selected>1 张</option><option value="2">2 张</option><option value="4">4 张</option></select></div>
-      <div class="opt"><label>步数</label><select id="steps"><option value="1">1步</option><option value="2">2步</option><option value="3">3步</option><option value="4" selected>4步</option></select></div>
-      <div class="opt"><label>格式</label><select id="fmt"><option value="jpg" selected>JPG</option><option value="webp">WebP</option><option value="png">PNG</option></select></div>
-    </div></div>
-    <div><div class="lbl">随机种子</div><div class="sr"><input type="number" id="seed" placeholder="留空=随机"/><button class="rb" onclick="document.getElementById('seed').value=Math.floor(Math.random()*2147483647)">⟳</button></div></div>
-    <button class="gb" id="gb" onclick="genTxt()">✦ 生成图片</button>
-  </div>
-
-  <!-- 图生图 -->
-  <div class="tab-content" id="tab-img2img">
+  <div class="sec show" id="img-t2i">
     <div>
-      <div class="lbl">参考图片</div>
-      <div class="upload-zone" id="i2iZone">
-        <input type="file" accept="image/*" onchange="handleUpload(this,'i2i')"/>
-        <div class="upload-txt">点击或拖入图片</div>
-        <img id="i2iPreview"/>
-      </div>
-    </div>
-    <div><div class="lbl">描述（想改成什么）</div><textarea id="i2iPrompt" placeholder="sexy Chinese woman in qipao, logo style, red background..." style="height:80px"></textarea></div>
-    <div>
-      <div class="lbl">参考强度 <span id="strengthVal" style="color:#888">0.75</span></div>
-      <div class="strength-row">
-        <span style="font-size:11px;color:#555">弱（更像原图）</span>
-        <input type="range" min="0.1" max="1" step="0.05" value="0.75" id="strength" oninput="document.getElementById('strengthVal').textContent=this.value"/>
-        <span style="font-size:11px;color:#555">强（更自由）</span>
-      </div>
-    </div>
-    <button class="gb" id="i2iBtn" onclick="genImg2Img()">✦ 图生图</button>
-  </div>
-
-  <!-- 反推提示词 -->
-  <div class="tab-content" id="tab-interrogate">
-    <div>
-      <div class="lbl">上传图片</div>
-      <div class="upload-zone" id="iqZone">
-        <input type="file" accept="image/*" onchange="handleUpload(this,'iq')"/>
-        <div class="upload-txt">上传图片，自动生成提示词</div>
-        <img id="iqPreview"/>
-      </div>
-    </div>
-    <div class="action-bar">
-      <button class="primary" onclick="doInterrogate()">🔍 反推提示词</button>
-    </div>
-    <div id="interrogateResult" class="interrogate-result"></div>
-    <button class="copy-prompt-btn" id="copyPromptBtn" onclick="copyPromptToTxt()">📋 复制到文字生图</button>
-  </div>
-</aside>
-
-<main>
-  <div class="canvas" id="canvas">
-    <div class="empty" id="empty">
-      <div style="font-size:48px;opacity:.3;margin-bottom:8px">🎨</div>
-      <div style="font-size:18px;color:#888">开始创作</div>
-      <div style="font-size:13px;color:#555;margin-top:6px">输入描述或上传图片</div>
+      <div class="field-label">图片描述</div>
+      <textarea id="imgPrompt" rows="4" placeholder="描述你想要的图片，建议用英文..."></textarea>
       <div class="pills">
-        <div class="pill" onclick="fp(this)">美女咖啡厅自然光</div>
-        <div class="pill" onclick="fp(this)">产品广告图简洁背景</div>
-        <div class="pill" onclick="fp(this)">城市夜景霓虹灯</div>
-        <div class="pill" onclick="fp(this)">古典仕女旗袍logo</div>
-        <div class="pill" onclick="fp(this)">医美医院现代室内</div>
+        <div class="pill" onclick="ap('imgPrompt','cinematic lighting')">电影光</div>
+        <div class="pill" onclick="ap('imgPrompt','8k ultra detail')">8K细节</div>
+        <div class="pill" onclick="ap('imgPrompt','professional photography')">专业摄影</div>
+        <div class="pill" onclick="ap('imgPrompt','bokeh background')">背景虚化</div>
+        <div class="pill" onclick="ap('imgPrompt','logo design flat vector')">Logo设计</div>
+        <div class="pill" onclick="ap('imgPrompt','line art black on red')">线描红底</div>
+        <div class="pill" onclick="ap('imgPrompt','minimalist clean')">极简</div>
+        <div class="pill" onclick="ap('imgPrompt','hyperrealistic')">超写实</div>
+        <div class="pill" onclick="ap('imgPrompt','octagon frame brand logo')">八边形框</div>
+        <div class="pill" onclick="ap('imgPrompt','sexy silhouette')">性感剪影</div>
       </div>
     </div>
-    <div class="ld" id="ld"><div class="ring"></div><div style="font-size:14px;color:#888" id="ltxt">正在处理...</div><div style="font-size:12px;color:#555">请稍候</div></div>
-    <div class="err" id="err"></div>
-    <div class="res" id="res">
-      <div id="iw" style="width:100%"></div>
-      <div class="acts" id="acts"></div>
-      <div style="font-size:12px;color:#555;margin-top:4px" id="mt"></div>
+    <div>
+      <div class="field-label">排除内容</div>
+      <textarea id="imgNeg" rows="2" placeholder="blur, low quality, watermark..."></textarea>
     </div>
-  </div>
-
-  <div class="history-section">
-    <div class="history-header">
-      <span class="history-title">历史记录</span>
-      <button class="clear-btn" onclick="clearHistory()">清空</button>
+    <div class="g2">
+      <div><div class="field-label">比例</div>
+        <select id="imgRatio"><option value="1:1">正方形 1:1</option><option value="16:9">横版 16:9</option><option value="9:16" selected>竖版 9:16</option><option value="4:3">4:3</option><option value="3:4">3:4</option><option value="21:9">超宽</option></select>
+      </div>
+      <div><div class="field-label">数量</div>
+        <select id="imgCount"><option value="1" selected>1 张</option><option value="2">2 张</option><option value="4">4 张</option></select>
+      </div>
+      <div><div class="field-label">步数</div>
+        <select id="imgSteps"><option value="1">1步 极快</option><option value="2">2步</option><option value="3">3步</option><option value="4" selected>4步 最佳</option></select>
+      </div>
+      <div><div class="field-label">格式</div>
+        <select id="imgFmt"><option value="jpg" selected>JPG</option><option value="webp">WebP</option><option value="png">PNG</option></select>
+      </div>
     </div>
-    <div class="hist-grid" id="histGrid"><div class="hist-empty">暂无历史记录</div></div>
+    <div>
+      <div class="field-label">种子（固定=可复现）</div>
+      <div style="display:flex;gap:6px"><input type="number" id="imgSeed" placeholder="留空=随机"/><button class="btn btn-ghost" style="width:auto;padding:0 12px;font-size:16px" onclick="document.getElementById('imgSeed').value=Math.floor(Math.random()*2147483647)">⟳</button></div>
+    </div>
+    <button class="btn btn-ac" id="imgBtn" onclick="genImage()">✦ 生成图片</button>
   </div>
-</main>
-
-<div class="preview-overlay" id="previewOverlay">
-  <button class="preview-close" onclick="closePreview()">✕</button>
-  <img id="previewImg" src="" alt="预览"/>
-  <div class="pacts">
-    <a id="previewDl" href="" download="ai_img.jpg" target="_blank">⬇ 下载</a>
-    <button onclick="closePreview()">关闭</button>
+  <!-- 图生图 -->
+  <div class="sec" id="img-i2i">
+    <div>
+      <div class="field-label">参考图片</div>
+      <div class="upload-zone" id="i2iZone"><input type="file" accept="image/*" onchange="uploadSingle(this,'i2i')"/><div class="upload-icon">🖼</div><div class="upload-txt">点击上传参考图片</div><div class="upload-preview-grid" id="i2iPreview"></div></div>
+    </div>
+    <div>
+      <div class="field-label">改成什么样</div>
+      <textarea id="i2iPrompt" rows="3" placeholder="sexy Chinese beauty in qipao, logo style, red background..."></textarea>
+    </div>
+    <div>
+      <div class="field-label">参考强度 — 低=像原图，高=更自由</div>
+      <div class="slider-wrap"><span class="slider-lbl">像原图</span><input type="range" min="0.1" max="1" step="0.05" value="0.75" id="i2iStr" oninput="document.getElementById('i2iStrV').textContent=this.value"/><span class="slider-lbl">自由</span><span class="slider-val" id="i2iStrV">0.75</span></div>
+    </div>
+    <button class="btn btn-ac" id="i2iBtn" onclick="genI2I()">✦ 图生图</button>
   </div>
 </div>
 
+<!-- ============================================================ -->
+<!-- 视频生成侧边栏 -->
+<!-- ============================================================ -->
+<div class="panel" id="panel-video">
+  <div class="sub-nav">
+    <button class="sub-btn active" onclick="subNav('video','t2v',this)">文字→视频</button>
+    <button class="sub-btn" onclick="subNav('video','i2v',this)">图→视频</button>
+    <button class="sub-btn" onclick="subNav('video','ms2v',this)">多图→视频</button>
+    <button class="sub-btn" onclick="subNav('video','v2v',this)">视频→视频</button>
+  </div>
+  <!-- 文字生视频 -->
+  <div class="sec show" id="video-t2v">
+    <div>
+      <div class="field-label">视频描述</div>
+      <textarea id="vidPrompt" rows="4" placeholder="A beautiful woman walking in slow motion, golden hour, cinematic..."></textarea>
+      <div class="pills">
+        <div class="pill" onclick="ap('vidPrompt','cinematic slow motion')">慢动作</div>
+        <div class="pill" onclick="ap('vidPrompt','golden hour lighting')">黄金时刻</div>
+        <div class="pill" onclick="ap('vidPrompt','smooth camera zoom in')">推镜头</div>
+        <div class="pill" onclick="ap('vidPrompt','aerial drone shot')">航拍</div>
+        <div class="pill" onclick="ap('vidPrompt','neon city night rain')">霓虹夜雨</div>
+        <div class="pill" onclick="ap('vidPrompt','fashion commercial professional')">时尚广告</div>
+        <div class="pill" onclick="ap('vidPrompt','hair flowing in wind')">发丝飘动</div>
+        <div class="pill" onclick="ap('vidPrompt','360 rotation product shot')">产品旋转</div>
+      </div>
+    </div>
+    <div class="g2">
+      <div><div class="field-label">时长</div><select id="vidDur"><option value="3">3秒</option><option value="6" selected>6秒</option></select></div>
+      <div><div class="field-label">比例</div><select id="vidRatio"><option value="16:9" selected>16:9</option><option value="9:16">9:16</option><option value="1:1">1:1</option></select></div>
+    </div>
+    <div class="tip tip-info">💡 MiniMax Video · 约 $0.08/个 · 生成约 2~5 分钟</div>
+    <button class="btn btn-ac" id="t2vBtn" onclick="genT2V()">🎬 生成视频</button>
+  </div>
+  <!-- 图生视频 -->
+  <div class="sec" id="video-i2v">
+    <div>
+      <div class="field-label">起始图片</div>
+      <div class="upload-zone" id="i2vZone"><input type="file" accept="image/*" onchange="uploadSingle(this,'i2v')"/><div class="upload-icon">🎬</div><div class="upload-txt">上传图片，让它动起来</div><div class="upload-preview-grid" id="i2vPreview"></div></div>
+    </div>
+    <div>
+      <div class="field-label">运动描述（选填）</div>
+      <textarea id="i2vPrompt" rows="2" placeholder="smooth cinematic zoom, soft light..."></textarea>
+      <div class="pills">
+        <div class="pill" onclick="ap('i2vPrompt','gentle camera pan left')">左平移</div>
+        <div class="pill" onclick="ap('i2vPrompt','slow zoom in')">缓慢推进</div>
+        <div class="pill" onclick="ap('i2vPrompt','hair blowing in wind')">发丝飘动</div>
+        <div class="pill" onclick="ap('i2vPrompt','eyes blinking slowly')">慢眨眼</div>
+        <div class="pill" onclick="ap('i2vPrompt','floating petals bokeh')">花瓣飘落</div>
+        <div class="pill" onclick="ap('i2vPrompt','camera rotate around subject')">环绕镜头</div>
+      </div>
+    </div>
+    <div><div class="field-label">时长</div><select id="i2vDur"><option value="3">3秒</option><option value="6" selected>6秒</option></select></div>
+    <div class="tip tip-info">💡 约 $0.08/个 · 生成约 2~5 分钟</div>
+    <button class="btn btn-ac" id="i2vBtn" onclick="genI2V()">🎬 图片生视频</button>
+  </div>
+  <!-- 多图生视频 -->
+  <div class="sec" id="video-ms2v">
+    <div>
+      <div class="field-label">上传多张图片（2~8张，拖动可排序）</div>
+      <div class="upload-zone" id="ms2vZone" style="min-height:80px"><input type="file" accept="image/*" multiple onchange="uploadMulti(this)"/><div class="upload-icon">📸</div><div class="upload-txt">点击上传多张图片<br>每张图生成一段视频</div><div class="upload-preview-grid" id="ms2vPreview"></div></div>
+      <div style="font-size:10px;color:var(--t3);margin-top:6px" id="ms2vCount"></div>
+    </div>
+    <div>
+      <div class="field-label">运动风格（应用于所有片段）</div>
+      <textarea id="ms2vPrompt" rows="2" placeholder="smooth cinematic motion, professional..."></textarea>
+    </div>
+    <div class="g2">
+      <div><div class="field-label">每段时长</div><select id="ms2vDur"><option value="3" selected>3秒</option><option value="6">6秒</option></select></div>
+      <div><div class="field-label">比例</div><select id="ms2vRatio"><option value="16:9" selected>16:9</option><option value="9:16">9:16</option></select></div>
+    </div>
+    <div class="tip tip-warn" id="ms2vCost">💡 预计消耗 $0.00</div>
+    <button class="btn btn-ac" id="ms2vBtn" onclick="genMs2V()">🎬 批量生成视频片段</button>
+  </div>
+  <!-- 视频生视频 -->
+  <div class="sec" id="video-v2v">
+    <div>
+      <div class="field-label">上传源视频</div>
+      <div class="upload-zone" id="v2vZone"><input type="file" accept="video/*" onchange="uploadVideo(this,'v2v')"/><div class="upload-icon">🎥</div><div class="upload-txt">上传视频文件（MP4，最大200MB）</div><div id="v2vVideoPreview"></div></div>
+    </div>
+    <div>
+      <div class="field-label">风格转换描述</div>
+      <textarea id="v2vPrompt" rows="3" placeholder="anime style, vibrant colors, Studio Ghibli...&#10;或：cinematic film grain, vintage look..."></textarea>
+      <div class="pills">
+        <div class="pill" onclick="ap('v2vPrompt','anime style vibrant colors')">动漫风格</div>
+        <div class="pill" onclick="ap('v2vPrompt','cinematic film grain vintage')">电影胶片</div>
+        <div class="pill" onclick="ap('v2vPrompt','oil painting artistic style')">油画风格</div>
+        <div class="pill" onclick="ap('v2vPrompt','neon cyberpunk futuristic')">赛博朋克</div>
+        <div class="pill" onclick="ap('v2vPrompt','black and white film noir')">黑白电影</div>
+        <div class="pill" onclick="ap('v2vPrompt','dreamy soft pastel tones')">梦幻粉彩</div>
+      </div>
+    </div>
+    <div class="tip tip-warn">⚠️ 视频生视频功能处于测试阶段，效果因模型而异</div>
+    <button class="btn btn-ac" id="v2vBtn" onclick="genV2V()">🎨 视频风格转换</button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 视频剪辑侧边栏 -->
+<!-- ============================================================ -->
+<div class="panel" id="panel-edit">
+  <div class="sub-nav">
+    <button class="sub-btn active" onclick="subNav('edit','auto',this)">AI 自动剪辑</button>
+    <button class="sub-btn" onclick="subNav('edit','music',this)">加音乐</button>
+    <button class="sub-btn" onclick="subNav('edit','upscale',this)">超清放大</button>
+  </div>
+
+  <!-- AI 自动剪辑 -->
+  <div class="sec show" id="edit-auto">
+    <div class="tip tip-green">🎬 上传你的视频，用文字描述剪辑风格，AI 会根据描述重新生成同类视频</div>
+    <div>
+      <div class="field-label">上传源视频（参考用）</div>
+      <div class="upload-zone" id="editVidZone"><input type="file" accept="video/*" onchange="uploadVideo(this,'edit')"/><div class="upload-icon">🎬</div><div class="upload-txt">上传视频作为参考</div><div id="editVidPreview"></div></div>
+    </div>
+    <div>
+      <div class="field-label">参考视频（可选）— 模仿这个视频的剪辑风格</div>
+      <div class="upload-zone" id="editRefZone"><input type="file" accept="video/*" onchange="uploadVideo(this,'editRef')"/><div class="upload-icon">📋</div><div class="upload-txt">上传参考风格视频（选填）</div><div id="editRefPreview"></div></div>
+    </div>
+    <div>
+      <div class="field-label">剪辑指令 — 告诉AI你想要什么效果</div>
+      <textarea id="editPrompt" rows="4" placeholder="例如：模仿抖音快剪风格，节奏感强，加快切换速度&#10;或：小红书美女vlog风格，温柔慢节奏，暖色调&#10;或：商业广告风格，精致，产品特写，高级感"></textarea>
+      <div class="pills">
+        <div class="pill" onclick="ap('editPrompt','抖音快剪风格，节奏感强，快速切换')">抖音快剪</div>
+        <div class="pill" onclick="ap('editPrompt','小红书vlog风格，温柔慢节奏，暖色调')">小红书vlog</div>
+        <div class="pill" onclick="ap('editPrompt','商业广告风格，高级感，精致特写')">商业广告</div>
+        <div class="pill" onclick="ap('editPrompt','电影预告片风格，大气，戏剧性')">电影感</div>
+        <div class="pill" onclick="ap('editPrompt','婚礼纪录片风格，浪漫，温馨')">婚礼纪录</div>
+        <div class="pill" onclick="ap('editPrompt','美食视频风格，特写，色彩鲜艳，食欲感强')">美食视频</div>
+        <div class="pill" onclick="ap('editPrompt','时尚大片风格，高对比度，冷色调')">时尚大片</div>
+        <div class="pill" onclick="ap('editPrompt','旅行vlog风格，风景特写，航拍，自然')">旅行vlog</div>
+      </div>
+    </div>
+    <div>
+      <div class="field-label">视频时长</div>
+      <select id="editDur"><option value="6" selected>6秒</option><option value="3">3秒</option></select>
+    </div>
+    <div class="tip tip-info">💡 AI 会分析你的描述，生成符合风格的新视频片段</div>
+    <button class="btn btn-ac" id="editBtn" onclick="genAIEdit()">✂️ AI 智能剪辑</button>
+    <div class="divider"></div>
+    <div class="field-label">分析视频内容</div>
+    <button class="btn btn-blue" id="analyzeBtn" onclick="analyzeVideo()">🔍 分析视频风格</button>
+  </div>
+
+  <!-- 加音乐 -->
+  <div class="sec" id="edit-music">
+    <div class="tip tip-green">🎵 给你的视频添加 AI 生成的背景音乐</div>
+    <div>
+      <div class="field-label">上传视频</div>
+      <div class="upload-zone" id="musicVidZone"><input type="file" accept="video/*" onchange="uploadVideo(this,'music')"/><div class="upload-icon">🎵</div><div class="upload-txt">上传需要加音乐的视频</div><div id="musicVidPreview"></div></div>
+    </div>
+    <div>
+      <div class="field-label">音乐风格描述</div>
+      <textarea id="musicPrompt" rows="3" placeholder="cinematic emotional background music, orchestral..."></textarea>
+      <div class="pills">
+        <div class="pill" onclick="ap('musicPrompt','cinematic emotional orchestral music')">电影配乐</div>
+        <div class="pill" onclick="ap('musicPrompt','upbeat pop background music, energetic')">活力流行</div>
+        <div class="pill" onclick="ap('musicPrompt','romantic soft piano music, gentle')">浪漫钢琴</div>
+        <div class="pill" onclick="ap('musicPrompt','Chinese traditional music, guqin, zen')">中国古典</div>
+        <div class="pill" onclick="ap('musicPrompt','EDM electronic dance music, bass drop')">EDM电音</div>
+        <div class="pill" onclick="ap('musicPrompt','acoustic guitar folk, warm, cozy')">民谣吉他</div>
+        <div class="pill" onclick="ap('musicPrompt','hip hop beat, urban, cool')">嘻哈节拍</div>
+        <div class="pill" onclick="ap('musicPrompt','luxury fashion show music, powerful')">时尚大秀</div>
+      </div>
+    </div>
+    <div class="tip tip-info">💡 MMAudio · AI 根据视频内容和描述生成匹配音乐</div>
+    <button class="btn btn-ac" id="musicBtn" onclick="addMusic()">🎵 添加背景音乐</button>
+  </div>
+
+  <!-- 超清放大 -->
+  <div class="sec" id="edit-upscale">
+    <div class="tip tip-green">🔬 将视频放大 2x，提升清晰度和细节</div>
+    <div>
+      <div class="field-label">上传视频</div>
+      <div class="upload-zone" id="upscaleVidZone"><input type="file" accept="video/*" onchange="uploadVideo(this,'upscale')"/><div class="upload-icon">🔬</div><div class="upload-txt">上传需要放大的视频</div><div id="upscaleVidPreview"></div></div>
+    </div>
+    <div class="tip tip-info">💡 Real-ESRGAN · 2x 超分辨率放大 · 约 $0.05~0.15</div>
+    <button class="btn btn-ac" id="upscaleBtn" onclick="upscaleVideo()">🔬 视频超清放大</button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- AI 工具侧边栏 -->
+<!-- ============================================================ -->
+<div class="panel" id="panel-tools">
+  <div class="sub-nav">
+    <button class="sub-btn active" onclick="subNav('tools','interrogate',this)">反推提示词</button>
+    <button class="sub-btn" onclick="subNav('tools','vidanalyze',this)">视频分析</button>
+  </div>
+  <!-- 反推提示词 -->
+  <div class="sec show" id="tools-interrogate">
+    <div class="tip tip-info">🔍 上传任意图片，AI 自动生成英文提示词，可直接用于生图/生视频</div>
+    <div>
+      <div class="field-label">上传图片</div>
+      <div class="upload-zone" id="iqZone"><input type="file" accept="image/*" onchange="uploadSingle(this,'iq')"/><div class="upload-icon">🔍</div><div class="upload-txt">上传图片自动分析</div><div class="upload-preview-grid" id="iqPreview"></div></div>
+    </div>
+    <button class="btn btn-ac" id="iqBtn" onclick="interrogate()">🔍 分析图片</button>
+  </div>
+  <!-- 视频分析 -->
+  <div class="sec" id="tools-vidanalyze">
+    <div class="tip tip-info">🎬 上传视频，AI 分析剪辑风格、镜头语言、色调等，生成可复用的风格描述</div>
+    <div>
+      <div class="field-label">上传视频</div>
+      <div class="upload-zone" id="vaZone"><input type="file" accept="video/*" onchange="uploadVideo(this,'va')"/><div class="upload-icon">🎬</div><div class="upload-txt">上传视频进行风格分析</div><div id="vaPreview"></div></div>
+    </div>
+    <button class="btn btn-ac" id="vaBtn" onclick="analyzeVA()">🔍 分析视频风格</button>
+  </div>
+</div>
+</aside>
+
+<!-- ============================================================ -->
+<!-- 主画布 -->
+<!-- ============================================================ -->
+<main>
+  <div class="canvas" id="canvas">
+
+    <!-- 空状态 -->
+    <div class="empty" id="stateEmpty">
+      <div class="empty-icon">✦</div>
+      <div class="empty-title">开始你的创作</div>
+      <div class="empty-sub">支持图片生成、视频生成、AI剪辑、反推提示词<br>选择左侧功能，开始创作</div>
+      <div class="quick-grid">
+        <div class="qcard" onclick="quick('img')"><div class="qcard-icon">🖼</div><div class="qcard-title">生成图片</div><div class="qcard-sub">Flux Schnell · $0.003/张</div></div>
+        <div class="qcard" onclick="quick('video')"><div class="qcard-icon">🎬</div><div class="qcard-title">生成视频</div><div class="qcard-sub">MiniMax · $0.08/个</div></div>
+        <div class="qcard" onclick="quick('edit')"><div class="qcard-icon">✂️</div><div class="qcard-title">AI 剪辑</div><div class="qcard-sub">上传视频智能处理</div></div>
+        <div class="qcard" onclick="quick('tools')"><div class="qcard-icon">🔍</div><div class="qcard-title">反推提示词</div><div class="qcard-sub">图片→英文描述</div></div>
+      </div>
+    </div>
+
+    <!-- 加载 -->
+    <div class="loading" id="stateLoading">
+      <div class="l-ring"></div>
+      <div class="l-title" id="lTitle">处理中...</div>
+      <div class="l-timer" id="lTimer">00:00</div>
+      <div class="l-progress"><div class="l-prog-fill" id="lProg"></div></div>
+      <div class="l-sub" id="lSub">请耐心等待</div>
+      <div class="l-steps" id="lSteps"></div>
+    </div>
+
+    <!-- 错误 -->
+    <div class="err-box" id="stateErr"></div>
+
+    <!-- 结果 -->
+    <div class="result" id="stateResult">
+      <div id="resultContent" style="width:100%"></div>
+      <div class="result-bar" id="resultBar"></div>
+      <div class="result-meta" id="resultMeta"></div>
+    </div>
+
+  </div>
+
+  <!-- 历史栏 -->
+  <div class="hist-bar">
+    <span class="hist-label">历史</span>
+    <div class="hist-scroll" id="histScroll"><span class="hist-empty">暂无记录</span></div>
+    <button class="hist-clear" onclick="clearHist()">清空</button>
+  </div>
+</main>
+
+<!-- 预览弹窗 -->
+<div class="modal" id="modal">
+  <button class="modal-close" onclick="closeModal()">✕</button>
+  <div id="modalContent"></div>
+  <div class="modal-bar" id="modalBar"></div>
+</div>
+
 <script>
-const HIST_KEY='ai_img_history_v2';
-const PM={
-  '美女咖啡厅自然光':'A beautiful young woman sitting in a modern cafe, natural light, cinematic photography, high quality, 8k',
-  '产品广告图简洁背景':'Product advertisement photo, clean white background, minimalist style, professional lighting, commercial photography',
-  '城市夜景霓虹灯':'City night scene, neon lights, rain reflection, cinematic, cyberpunk atmosphere, high detail',
-  '古典仕女旗袍logo':'Classical Chinese beauty silhouette in qipao, red and black color scheme, elegant line art, brand logo, octagon frame, flat design',
-  '医美医院现代室内':'Modern medical aesthetics hospital interior, clean white design, luxury atmosphere, professional lighting'
-};
+// ===== 全局状态 =====
+const HIST_KEY = 'aipro_hist_v2';
+const COST_KEY = 'aipro_cost_v2';
+let totalCost = parseFloat(localStorage.getItem(COST_KEY)||'0');
+let timerInterval = null;
+let timerStart = 0;
 
-let i2iBase64='', iqBase64='';
+// 上传的数据
+const uploads = { i2i:'', i2v:'', iq:'', v2v:'', edit:'', editRef:'', music:'', upscale:'', va:'' };
+let multiImgs = [];
 
-function fp(el){
-  document.getElementById('prompt').value=PM[el.textContent]||el.textContent;
-  switchTabByName('txt2img');
-}
-
-function switchTab(name,btn){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+// ===== 导航 =====
+function goTo(tab, btn) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('show'));
+  document.getElementById('panel-'+tab).classList.add('show');
+  showState('empty');
 }
 
-function switchTabByName(name){
-  document.querySelectorAll('.tab').forEach((t,i)=>{
-    t.classList.remove('active');
-    if(['txt2img','img2img','interrogate'][i]===name)t.classList.add('active');
+function subNav(panel, sec, btn) {
+  const p = document.getElementById('panel-'+panel);
+  p.querySelectorAll('.sub-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  p.querySelectorAll('.sec').forEach(s => s.classList.remove('show'));
+  document.getElementById(panel+'-'+sec).classList.add('show');
+}
+
+function quick(tab) {
+  const btns = document.querySelectorAll('.nav-btn');
+  const tabs = ['img','video','edit','tools'];
+  const idx = tabs.indexOf(tab);
+  if(idx >= 0) goTo(tab, btns[idx]);
+}
+
+// ===== 提示词 =====
+function ap(id, text) {
+  const el = document.getElementById(id);
+  el.value = (el.value.trim() ? el.value.trim() + ', ' : '') + text;
+  el.focus();
+}
+
+// ===== 状态管理 =====
+function showState(s) {
+  ['stateEmpty','stateLoading','stateErr','stateResult'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
   });
-  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.add('active');
+  const map = {empty:'stateEmpty',loading:'stateLoading',error:'stateErr',result:'stateResult'};
+  const el = document.getElementById(map[s]);
+  if(el) {
+    el.style.display = (s==='loading'||s==='result') ? 'flex' : 'block';
+    if(s==='loading') el.style.flexDirection = 'column';
+  }
 }
 
-function handleUpload(input,type){
-  const file=input.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const b64=e.target.result;
-    if(type==='i2i'){
-      i2iBase64=b64;
-      const img=document.getElementById('i2iPreview');
-      img.src=b64;img.style.display='block';
-      document.querySelector('#i2iZone .upload-txt').textContent='点击重新上传';
-    }else{
-      iqBase64=b64;
-      const img=document.getElementById('iqPreview');
-      img.src=b64;img.style.display='block';
-      document.querySelector('#iqZone .upload-txt').textContent='点击重新上传';
-    }
+function startLoad(title, sub, steps=[]) {
+  showState('loading');
+  document.getElementById('lTitle').textContent = title;
+  document.getElementById('lSub').textContent = sub;
+  document.getElementById('lProg').style.width = '0%';
+  document.getElementById('lSteps').innerHTML = steps.map((s,i) => `<div class="lstep" id="lstep${i}">${s}</div>`).join('');
+  timerStart = Date.now();
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const s = Math.floor((Date.now()-timerStart)/1000);
+    const m = Math.floor(s/60).toString().padStart(2,'0');
+    const sec = (s%60).toString().padStart(2,'0');
+    document.getElementById('lTimer').textContent = `${m}:${sec}`;
+  }, 500);
+}
+
+function setStep(i, total) {
+  document.querySelectorAll('.lstep').forEach((el,j) => {
+    el.classList.remove('active','done');
+    if(j<i) el.classList.add('done');
+    if(j===i) el.classList.add('active');
+  });
+  if(total>0) document.getElementById('lProg').style.width = `${Math.min(95,((i+1)/total)*100)}%`;
+}
+
+function stopLoad() { clearInterval(timerInterval); document.getElementById('lProg').style.width = '100%'; }
+
+function showErr(msg) { stopLoad(); showState('error'); document.getElementById('stateErr').style.display='block'; document.getElementById('stateErr').textContent = msg; }
+
+// ===== 上传处理 =====
+function uploadSingle(input, key) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    uploads[key] = e.target.result;
+    const previewId = key+'Preview';
+    const el = document.getElementById(previewId);
+    if(el) { el.innerHTML = `<div class="up-thumb"><img src="${e.target.result}"></div>`; }
+    const zone = input.parentElement;
+    const txt = zone.querySelector('.upload-txt');
+    if(txt) txt.textContent = '点击重新上传';
   };
   reader.readAsDataURL(file);
 }
 
-function show(id){
-  ['empty','ld','err','res'].forEach(i=>{const e=document.getElementById(i);if(e)e.style.display='none'});
-  const t=document.getElementById(id);
-  if(t)t.style.display=(id==='res'||id==='ld')?'flex':'block';
+function uploadMulti(input) {
+  const files = Array.from(input.files).slice(0,8);
+  multiImgs = new Array(files.length).fill('');
+  let loaded = 0;
+  files.forEach((file,i) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      multiImgs[i] = e.target.result;
+      if(++loaded === files.length) renderMultiPreview();
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
-async function genTxt(){
-  const prompt=document.getElementById('prompt').value.trim();
-  if(!prompt){showErr('请输入图片描述');return}
-  const btn=document.getElementById('gb');
-  btn.disabled=true;btn.textContent='⟳ 生成中...';
-  show('ld');document.getElementById('ltxt').textContent='正在生成...';
-  const t0=Date.now();
-  const steps=parseInt(document.getElementById('steps').value);
-  const count=parseInt(document.getElementById('count').value);
-  const seedVal=document.getElementById('seed').value;
-  const input={prompt,num_outputs:count,aspect_ratio:document.getElementById('ratio').value,num_inference_steps:steps,output_format:document.getElementById('fmt').value,output_quality:95};
-  if(seedVal)input.seed=parseInt(seedVal);
-  try{
-    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({input})});
-    const data=await r.json();
-    if(!r.ok)throw new Error(data.detail||'错误 '+r.status);
-    if(!data.output||!data.output.length)throw new Error('未返回结果');
-    renderResult(data.output,((Date.now()-t0)/1000).toFixed(1),(steps/4)*0.003*count);
-  }catch(e){showErr('❌ '+e.message)}
-  finally{btn.disabled=false;btn.textContent='✦ 生成图片'}
+function renderMultiPreview() {
+  const el = document.getElementById('ms2vPreview');
+  el.innerHTML = multiImgs.map((b64,i) => b64 ? `<div class="up-thumb"><img src="${b64}"><div class="up-order">${i+1}</div><button class="up-rm" onclick="removeMulti(${i})">×</button></div>` : '').join('');
+  document.getElementById('ms2vCount').textContent = `已选 ${multiImgs.filter(Boolean).length} 张`;
+  document.getElementById('ms2vCost').textContent = `💡 预计消耗约 $${(multiImgs.filter(Boolean).length * 0.08).toFixed(2)}`;
 }
 
-async function genImg2Img(){
-  if(!i2iBase64){showErr('请先上传参考图片');return}
-  const prompt=document.getElementById('i2iPrompt').value.trim();
-  if(!prompt){showErr('请输入描述');return}
-  const btn=document.getElementById('i2iBtn');
-  btn.disabled=true;btn.textContent='⟳ 生成中...';
-  show('ld');document.getElementById('ltxt').textContent='图生图处理中，约30秒...';
-  const t0=Date.now();
-  try{
-    const r=await fetch('/api/img2img',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:i2iBase64,prompt,strength:parseFloat(document.getElementById('strength').value)})});
-    const data=await r.json();
-    if(!r.ok)throw new Error(data.detail||'错误 '+r.status);
-    if(!data.output||!data.output.length)throw new Error('未返回结果');
-    renderResult(data.output,((Date.now()-t0)/1000).toFixed(1),0.025);
-  }catch(e){showErr('❌ '+e.message)}
-  finally{btn.disabled=false;btn.textContent='✦ 图生图'}
+function removeMulti(i) { multiImgs.splice(i,1); renderMultiPreview(); }
+
+function uploadVideo(input, key) {
+  const file = input.files[0]; if(!file) return;
+  const url = URL.createObjectURL(file);
+  const previewId = key+'VidPreview';
+  const el = document.getElementById(previewId);
+  if(el) el.innerHTML = `<video src="${url}" controls style="width:100%;border-radius:6px;margin-top:8px;max-height:120px"></video>`;
+  const reader = new FileReader();
+  reader.onload = e => { uploads[key] = e.target.result; };
+  reader.readAsDataURL(file);
 }
 
-async function doInterrogate(){
-  if(!iqBase64){showErr('请先上传图片');return}
-  show('ld');document.getElementById('ltxt').textContent='正在分析图片，约30秒...';
-  document.getElementById('interrogateResult').style.display='none';
-  document.getElementById('copyPromptBtn').style.display='none';
-  try{
-    const r=await fetch('/api/interrogate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:iqBase64})});
-    const data=await r.json();
-    if(!r.ok)throw new Error(data.detail||'错误');
-    show('empty');
-    const result=document.getElementById('interrogateResult');
-    result.textContent=data.prompt;
-    result.style.display='block';
-    document.getElementById('copyPromptBtn').style.display='block';
-  }catch(e){showErr('❌ '+e.message)}
+// ===== 图片生成 =====
+async function genImage() {
+  const prompt = document.getElementById('imgPrompt').value.trim();
+  if(!prompt) { showErr('请输入图片描述'); return; }
+  const btn = document.getElementById('imgBtn');
+  setBtn(btn, true, '⟳ 生成中...');
+  const steps = parseInt(document.getElementById('imgSteps').value);
+  const count = parseInt(document.getElementById('imgCount').value);
+  const seedVal = document.getElementById('imgSeed').value;
+  const input = { prompt, num_outputs: count, aspect_ratio: document.getElementById('imgRatio').value, num_inference_steps: steps, output_format: document.getElementById('imgFmt').value, output_quality: 95 };
+  if(seedVal) input.seed = parseInt(seedVal);
+  startLoad('生成图片中...', `Flux Schnell · ${count}张 · 约5~15秒`, ['提交请求','AI 生成','处理输出']);
+  setStep(0,3);
+  const t0 = Date.now();
+  try {
+    setStep(1,3);
+    const r = await fetch('/api/generate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({input}) });
+    setStep(2,3);
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'生成失败');
+    if(!d.output?.length) throw new Error('未返回结果');
+    stopLoad();
+    const cost = (steps/4)*0.003*count;
+    addCost(cost);
+    renderImgResult(d.output, ((Date.now()-t0)/1000).toFixed(1), cost);
+    saveHist(d.output.map(u=>({type:'image',url:u})));
+  } catch(e) { showErr('❌ '+e.message); }
+  finally { setBtn(btn, false, '✦ 生成图片'); }
 }
 
-function copyPromptToTxt(){
-  const p=document.getElementById('interrogateResult').textContent;
-  document.getElementById('prompt').value=p;
-  switchTabByName('txt2img');
-  document.getElementById('copyPromptBtn').textContent='✓ 已复制到文字生图';
-  setTimeout(()=>document.getElementById('copyPromptBtn').textContent='📋 复制到文字生图',2000);
+// ===== 图生图 =====
+async function genI2I() {
+  if(!uploads.i2i) { showErr('请先上传参考图片'); return; }
+  const prompt = document.getElementById('i2iPrompt').value.trim();
+  if(!prompt) { showErr('请输入描述'); return; }
+  const btn = document.getElementById('i2iBtn');
+  setBtn(btn, true, '⟳ 生成中...');
+  startLoad('图生图处理中...', 'Flux Dev · 约30~60秒', ['上传图片','分析参考','生成结果']);
+  const t0 = Date.now();
+  try {
+    setStep(1,3);
+    const r = await fetch('/api/img2img', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({image:uploads.i2i, prompt, strength:parseFloat(document.getElementById('i2iStr').value)}) });
+    setStep(2,3);
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'失败');
+    stopLoad();
+    addCost(0.025);
+    renderImgResult(d.output, ((Date.now()-t0)/1000).toFixed(1), 0.025);
+    saveHist(d.output.map(u=>({type:'image',url:u})));
+  } catch(e) { showErr('❌ '+e.message); }
+  finally { setBtn(btn, false, '✦ 图生图'); }
 }
 
-function renderResult(urls,elapsed,cost){
-  show('res');
-  const hist=getHistory();
-  urls.forEach(url=>hist.unshift({url,time:Date.now()}));
-  saveHistory(hist.slice(0,50));
-  renderHistory();
-  const iw=document.getElementById('iw');iw.innerHTML='';iw.style.width='100%';
-  if(urls.length===1){
-    const img=document.createElement('img');img.src=urls[0];img.onclick=()=>openPreview(urls[0]);iw.appendChild(img);
-  }else{
-    iw.style.display='grid';iw.style.gridTemplateColumns='1fr 1fr';iw.style.gap='10px';
-    urls.forEach(url=>{const img=document.createElement('img');img.src=url;img.style.cssText='width:100%;border-radius:10px;cursor:pointer';img.onclick=()=>openPreview(url);iw.appendChild(img)});
+// ===== 文字生视频 =====
+async function genT2V() {
+  const prompt = document.getElementById('vidPrompt').value.trim();
+  if(!prompt) { showErr('请输入视频描述'); return; }
+  const btn = document.getElementById('t2vBtn');
+  setBtn(btn, true, '⟳ 生成中...');
+  const dur = parseInt(document.getElementById('vidDur').value);
+  startLoad('生成视频中...', 'MiniMax Video · 通常2~5分钟，请耐心等待', ['提交请求','生成画面','合成视频','完成输出']);
+  const t0 = Date.now();
+  let prog = 0;
+  const autoStep = setInterval(()=>{ prog=Math.min(2,Math.floor((Date.now()-t0)/60000)); setStep(prog,4); },15000);
+  try {
+    const r = await fetch('/api/txt2video', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({prompt, duration:dur, ratio:document.getElementById('vidRatio').value}) });
+    clearInterval(autoStep); setStep(3,4); stopLoad();
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'失败');
+    addCost(0.08);
+    renderVidResult(d.output[0], ((Date.now()-t0)/1000).toFixed(1), 0.08, '文字生视频');
+    saveHist([{type:'video',url:d.output[0]}]);
+  } catch(e) { clearInterval(autoStep); showErr('❌ '+e.message); }
+  finally { setBtn(btn, false, '🎬 生成视频'); }
+}
+
+// ===== 图生视频 =====
+async function genI2V() {
+  if(!uploads.i2v) { showErr('请先上传图片'); return; }
+  const btn = document.getElementById('i2vBtn');
+  setBtn(btn, true, '⟳ 生成中...');
+  const prompt = document.getElementById('i2vPrompt').value.trim() || 'smooth cinematic motion';
+  startLoad('图片生视频中...', 'MiniMax Video · 通常2~5分钟', ['上传图片','分析内容','生成视频','完成']);
+  const t0 = Date.now();
+  const autoStep = setInterval(()=>{ setStep(Math.min(2,Math.floor((Date.now()-t0)/60000)),4); },15000);
+  try {
+    const r = await fetch('/api/img2video', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({image:uploads.i2v, prompt, duration:parseInt(document.getElementById('i2vDur').value)}) });
+    clearInterval(autoStep); setStep(3,4); stopLoad();
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'失败');
+    addCost(0.08);
+    renderVidResult(d.output[0], ((Date.now()-t0)/1000).toFixed(1), 0.08, '图生视频');
+    saveHist([{type:'video',url:d.output[0]}]);
+  } catch(e) { clearInterval(autoStep); showErr('❌ '+e.message); }
+  finally { setBtn(btn, false, '🎬 图片生视频'); }
+}
+
+// ===== 多图生视频 =====
+async function genMs2V() {
+  const imgs = multiImgs.filter(Boolean);
+  if(imgs.length < 2) { showErr('请至少上传2张图片'); return; }
+  const btn = document.getElementById('ms2vBtn');
+  setBtn(btn, true, '⟳ 生成中...');
+  const prompt = document.getElementById('ms2vPrompt').value.trim() || 'smooth cinematic motion, professional video';
+  const dur = parseInt(document.getElementById('ms2vDur').value);
+  startLoad(`批量生成 ${imgs.length} 段视频...`, `每段约2~5分钟，共约${imgs.length*3}分钟`, imgs.map((_,i)=>`第 ${i+1} 段视频`));
+  const t0 = Date.now();
+  const results = [];
+  try {
+    for(let i=0; i<imgs.length; i++) {
+      setStep(i, imgs.length);
+      document.getElementById('lTitle').textContent = `生成第 ${i+1}/${imgs.length} 段...`;
+      const r = await fetch('/api/img2video', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({image:imgs[i], prompt, duration:dur}) });
+      const d = await r.json();
+      if(r.ok && d.output?.length) {
+        results.push(d.output[0]);
+        addCost(0.08);
+        renderMultiVidResult(results, i+1, imgs.length);
+      }
+    }
+    stopLoad();
+    document.getElementById('resultMeta').innerHTML = `全部完成 · 耗时 <b>${((Date.now()-t0)/1000).toFixed(0)}s</b> · 消耗 <b>$${(results.length*0.08).toFixed(2)}</b>`;
+    saveHist(results.map(u=>({type:'video',url:u})));
+  } catch(e) { showErr('❌ '+e.message); }
+  finally { setBtn(btn, false, '🎬 批量生成视频片段'); }
+}
+
+// ===== 视频生视频 =====
+async function genV2V() {
+  if(!uploads.v2v) { showErr('请先上传视频'); return; }
+  const prompt = document.getElementById('v2vPrompt').value.trim();
+  if(!prompt) { showErr('请输入风格描述'); return; }
+  const btn = document.getElementById('v2vBtn');
+  setBtn(btn, true, '⟳ 转换中...');
+  startLoad('视频风格转换中...', 'AI 风格迁移 · 约1~3分钟', ['分析源视频','应用风格','生成结果']);
+  const t0 = Date.now();
+  try {
+    setStep(1,3);
+    const r = await fetch('/api/vid2vid', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({video_url:uploads.v2v, prompt}) });
+    setStep(2,3); stopLoad();
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'失败');
+    addCost(0.05);
+    renderVidResult(d.output[0], ((Date.now()-t0)/1000).toFixed(1), 0.05, '视频风格转换');
+    saveHist([{type:'video',url:d.output[0]}]);
+  } catch(e) { showErr('❌ '+e.message); }
+  finally { setBtn(btn, false, '🎨 视频风格转换'); }
+}
+
+// ===== AI 剪辑 =====
+async function genAIEdit() {
+  const prompt = document.getElementById('editPrompt').value.trim();
+  if(!prompt) { showErr('请输入剪辑指令'); return; }
+  const btn = document.getElementById('editBtn');
+  setBtn(btn, true, '⟳ 处理中...');
+  startLoad('AI 智能剪辑中...', '根据你的风格描述生成新视频 · 约2~5分钟', ['分析剪辑指令','理解风格要求','生成视频','完成']);
+  const t0 = Date.now();
+  const autoStep = setInterval(()=>{ setStep(Math.min(2,Math.floor((Date.now()-t0)/60000)),4); },20000);
+  try {
+    const r = await fetch('/api/ai-edit', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({video_url:uploads.edit||'', edit_prompt:prompt, style_ref_url:uploads.editRef||''}) });
+    clearInterval(autoStep); setStep(3,4); stopLoad();
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'失败');
+    addCost(0.08);
+    renderVidResult(d.output[0], ((Date.now()-t0)/1000).toFixed(1), 0.08, 'AI 智能剪辑');
+    saveHist([{type:'video',url:d.output[0]}]);
+  } catch(e) { clearInterval(autoStep); showErr('❌ '+e.message); }
+  finally { setBtn(btn, false, '✂️ AI 智能剪辑'); }
+}
+
+async function analyzeVideo() {
+  if(!uploads.edit) { showErr('请先上传视频'); return; }
+  const btn = document.getElementById('analyzeBtn');
+  setBtn(btn, true, '⟳ 分析中...');
+  startLoad('分析视频中...', '识别风格、色调、节奏...', ['上传视频','AI 分析','生成报告']);
+  try {
+    setStep(1,3);
+    const r = await fetch('/api/analyze-video', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({video_url:uploads.edit}) });
+    setStep(2,3); stopLoad();
+    const d = await r.json();
+    renderAnalysis(d.analysis || '分析完成，请参考以下建议');
+  } catch(e) { showErr('❌ '+e.message); }
+  finally { setBtn(btn, false, '🔍 分析视频风格'); }
+}
+
+// ===== 加音乐 =====
+async function addMusic() {
+  if(!uploads.music) { showErr('请先上传视频'); return; }
+  const btn = document.getElementById('musicBtn');
+  setBtn(btn, true, '⟳ 生成中...');
+  const prompt = document.getElementById('musicPrompt').value.trim() || 'cinematic background music';
+  startLoad('AI 生成背景音乐中...', 'MMAudio · 约30~60秒', ['分析视频','生成音乐','合并视频']);
+  const t0 = Date.now();
+  try {
+    setStep(1,3);
+    const r = await fetch('/api/video-music', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({video_url:uploads.music, music_prompt:prompt}) });
+    setStep(2,3); stopLoad();
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'失败');
+    addCost(0.05);
+    renderVidResult(d.output[0], ((Date.now()-t0)/1000).toFixed(1), 0.05, '视频+AI音乐');
+    saveHist([{type:'video',url:d.output[0]}]);
+  } catch(e) { showErr('❌ '+e.message); }
+  finally { setBtn(btn, false, '🎵 添加背景音乐'); }
+}
+
+// ===== 超清放大 =====
+async function upscaleVideo() {
+  if(!uploads.upscale) { showErr('请先上传视频'); return; }
+  const btn = document.getElementById('upscaleBtn');
+  setBtn(btn, true, '⟳ 处理中...');
+  startLoad('超清放大处理中...', 'Real-ESRGAN 2x · 约1~3分钟', ['上传视频','AI 超分辨率','输出高清视频']);
+  const t0 = Date.now();
+  try {
+    setStep(1,3);
+    const r = await fetch('/api/video-upscale', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({video_url:uploads.upscale}) });
+    setStep(2,3); stopLoad();
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'失败');
+    addCost(0.1);
+    renderVidResult(d.output[0], ((Date.now()-t0)/1000).toFixed(1), 0.1, '超清放大 2x');
+    saveHist([{type:'video',url:d.output[0]}]);
+  } catch(e) { showErr('❌ '+e.message); }
+  finally { setBtn(btn, false, '🔬 视频超清放大'); }
+}
+
+// ===== 反推提示词 =====
+async function interrogate() {
+  if(!uploads.iq) { showErr('请先上传图片'); return; }
+  const btn = document.getElementById('iqBtn');
+  setBtn(btn, true, '⟳ 分析中...');
+  startLoad('分析图片中...', 'CLIP Interrogator · 约30~60秒', ['上传图片','AI 识别','生成描述']);
+  try {
+    setStep(1,3);
+    const r = await fetch('/api/interrogate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({image:uploads.iq}) });
+    setStep(2,3); stopLoad();
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'失败');
+    renderAnalysis(d.prompt, true);
+  } catch(e) { showErr('❌ '+e.message); }
+  finally { setBtn(btn, false, '🔍 分析图片'); }
+}
+
+// ===== 视频分析 =====
+async function analyzeVA() {
+  if(!uploads.va) { showErr('请先上传视频'); return; }
+  const btn = document.getElementById('vaBtn');
+  setBtn(btn, true, '⟳ 分析中...');
+  startLoad('分析视频风格中...', 'AI 分析镜头语言和剪辑节奏...', ['上传视频','分析内容','生成报告']);
+  try {
+    setStep(1,3);
+    const r = await fetch('/api/analyze-video', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({video_url:uploads.va}) });
+    setStep(2,3); stopLoad();
+    const d = await r.json();
+    renderAnalysis(d.analysis || '分析完成');
+  } catch(e) { showErr('❌ '+e.message); }
+  finally { setBtn(btn, false, '🔍 分析视频风格'); }
+}
+
+// ===== 渲染函数 =====
+function renderImgResult(urls, elapsed, cost) {
+  showState('result');
+  const n = urls.length;
+  let html = `<div class="img-grid c${n}" id="igrid">`;
+  urls.forEach(url => {
+    html += `<div class="img-card"><img src="${url}" loading="lazy"><div class="img-ov"><a class="ov-btn" href="${url}" download="ai_${Date.now()}.jpg" target="_blank">⬇ 下载</a><button class="ov-btn" onclick="openModal('image','${url}')">🔍 预览</button><button class="ov-btn" onclick="useAsI2I('${url}')">🔄 用作参考</button></div></div>`;
+  });
+  html += '</div>';
+  document.getElementById('resultContent').innerHTML = html;
+  document.getElementById('resultBar').innerHTML = `<a class="rbar-btn" href="${urls[0]}" download="ai_${Date.now()}.jpg" target="_blank">⬇ 下载</a><button class="rbar-btn" onclick="cp('${urls[0]}',this)">🔗 复制链接</button><button class="rbar-btn" onclick="useAsI2I('${urls[0]}')">🔄 用作图生图</button><button class="rbar-btn" onclick="useAsI2V('${urls[0]}')">🎬 用作图生视频</button>`;
+  document.getElementById('resultMeta').innerHTML = `耗时 <b>${elapsed}s</b> · 消耗 <b>$${cost.toFixed(3)}</b>`;
+}
+
+function renderVidResult(url, elapsed, cost, label) {
+  showState('result');
+  document.getElementById('resultContent').innerHTML = `<div class="vid-player"><video src="${url}" controls autoplay loop playsinline></video><div class="vid-info"><span>${label}</span><span>${elapsed}s · $${cost.toFixed(3)}</span></div></div>`;
+  document.getElementById('resultBar').innerHTML = `<a class="rbar-btn primary" href="${url}" download="ai_video_${Date.now()}.mp4" target="_blank">⬇ 下载 MP4</a><button class="rbar-btn" onclick="openModal('video','${url}')">🔍 全屏</button><button class="rbar-btn" onclick="cp('${url}',this)">🔗 复制链接</button>`;
+  document.getElementById('resultMeta').innerHTML = `${label} · 耗时 <b>${elapsed}s</b> · 消耗 <b>$${cost.toFixed(2)}</b>`;
+}
+
+function renderMultiVidResult(urls, done, total) {
+  showState('result');
+  let html = `<div style="font-size:12px;color:var(--t2);margin-bottom:12px">✅ 已完成 ${done}/${total} 段</div><div class="multi-vid">`;
+  urls.forEach((url,i) => {
+    html += `<div class="vid-card"><video src="${url}" controls loop playsinline muted></video><div class="vid-card-bar"><span class="vid-card-num">第 ${i+1} 段</span><a href="${url}" download="vid_${i+1}_${Date.now()}.mp4" target="_blank" style="font-size:11px;color:var(--blue)">⬇ 下载</a></div></div>`;
+  });
+  html += '</div>';
+  document.getElementById('resultContent').innerHTML = html;
+  document.getElementById('resultBar').innerHTML = '';
+}
+
+function renderAnalysis(text, isPrompt=false) {
+  showState('result');
+  const content = document.getElementById('resultContent');
+  content.innerHTML = `<div class="analysis-box"><div class="analysis-section"><div class="analysis-section-title">${isPrompt?'反推提示词结果':'视频分析报告'}</div><div class="analysis-text" id="analysisText">${text}</div></div><div class="analysis-actions"><button class="aact-btn" onclick="navigator.clipboard.writeText(document.getElementById('analysisText').textContent).then(()=>{this.textContent='✓ 已复制';setTimeout(()=>this.textContent='📋 复制',2000)})">📋 复制</button><button class="aact-btn ac" onclick="applyAnalysis('img')">${isPrompt?'→ 用于生图':'→ 用于剪辑'}</button><button class="aact-btn" onclick="applyAnalysis('video')">${isPrompt?'→ 用于生视频':'→ 生成同风格视频'}</button></div></div>`;
+  document.getElementById('resultBar').innerHTML = '';
+  document.getElementById('resultMeta').textContent = '';
+}
+
+function applyAnalysis(target) {
+  const text = document.getElementById('analysisText')?.textContent;
+  if(!text) return;
+  if(target==='img') { document.getElementById('imgPrompt').value = text; goTo('img', document.querySelectorAll('.nav-btn')[0]); }
+  else { document.getElementById('vidPrompt').value = text; goTo('video', document.querySelectorAll('.nav-btn')[1]); }
+}
+
+function useAsI2I(url) {
+  fetch(url).then(r=>r.blob()).then(b=>{const rd=new FileReader();rd.onload=e=>{uploads.i2i=e.target.result;const el=document.getElementById('i2iPreview');if(el)el.innerHTML=`<div class="up-thumb"><img src="${e.target.result}"></div>`;goTo('img',document.querySelectorAll('.nav-btn')[0]);subNav('img','i2i',document.querySelectorAll('#panel-img .sub-btn')[1]);};rd.readAsDataURL(b);}).catch(()=>{});
+}
+
+function useAsI2V(url) {
+  fetch(url).then(r=>r.blob()).then(b=>{const rd=new FileReader();rd.onload=e=>{uploads.i2v=e.target.result;const el=document.getElementById('i2vPreview');if(el)el.innerHTML=`<div class="up-thumb"><img src="${e.target.result}"></div>`;goTo('video',document.querySelectorAll('.nav-btn')[1]);subNav('video','i2v',document.querySelectorAll('#panel-video .sub-btn')[1]);};rd.readAsDataURL(b);}).catch(()=>{});
+}
+
+// ===== 预览弹窗 =====
+function openModal(type, url) {
+  const modal = document.getElementById('modal');
+  const content = document.getElementById('modalContent');
+  const bar = document.getElementById('modalBar');
+  if(type==='image') {
+    content.innerHTML = `<img src="${url}" class="modal-media" alt="预览">`;
+    bar.innerHTML = `<a class="modal-btn" href="${url}" download="ai_${Date.now()}.jpg" target="_blank">⬇ 下载</a><button class="modal-btn" onclick="closeModal()">关闭</button>`;
+  } else {
+    content.innerHTML = `<video src="${url}" class="modal-media" controls autoplay loop playsinline></video>`;
+    bar.innerHTML = `<a class="modal-btn" href="${url}" download="ai_video_${Date.now()}.mp4" target="_blank">⬇ 下载</a><button class="modal-btn" onclick="closeModal()">关闭</button>`;
   }
-  const acts=document.getElementById('acts');acts.innerHTML='';
-  const dl=document.createElement('a');dl.className='ab';dl.href=urls[0];dl.download='ai_img_'+Date.now()+'.jpg';dl.target='_blank';dl.textContent='⬇ 下载';acts.appendChild(dl);
-  const cp=document.createElement('button');cp.className='ab';cp.textContent='🔗 复制链接';
-  cp.onclick=()=>navigator.clipboard.writeText(urls[0]).then(()=>{cp.textContent='✓ 已复制';setTimeout(()=>cp.textContent='🔗 复制链接',2000)});acts.appendChild(cp);
-  document.getElementById('mt').innerHTML='耗时 '+elapsed+'s · 消耗约 $'+cost.toFixed(3);
+  modal.classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); document.getElementById('modalContent').innerHTML=''; }
+document.getElementById('modal').onclick = e => { if(e.target===e.currentTarget) closeModal(); };
+
+// ===== 工具函数 =====
+function setBtn(btn, dis, txt) { btn.disabled=dis; btn.textContent=txt; }
+function cp(url, btn) { navigator.clipboard.writeText(url).then(()=>{btn.textContent='✓ 已复制';setTimeout(()=>btn.textContent='🔗 复制链接',2000)}); }
+
+function addCost(n) {
+  totalCost += n;
+  localStorage.setItem(COST_KEY, totalCost.toFixed(4));
+  document.getElementById('costBadge').textContent = `消耗 $${totalCost.toFixed(3)}`;
 }
 
-function showErr(msg){show('err');document.getElementById('err').textContent=msg}
-function getHistory(){try{return JSON.parse(localStorage.getItem(HIST_KEY)||'[]')}catch{return[]}}
-function saveHistory(h){localStorage.setItem(HIST_KEY,JSON.stringify(h))}
-function renderHistory(){
-  const hist=getHistory();const grid=document.getElementById('histGrid');
-  if(!hist.length){grid.innerHTML='<div class="hist-empty">暂无历史记录</div>';return}
-  grid.innerHTML='';
-  hist.forEach(item=>{const div=document.createElement('div');div.className='hist-item';const img=document.createElement('img');img.src=item.url;img.onerror=()=>div.remove();img.onclick=()=>openPreview(item.url);div.appendChild(img);grid.appendChild(div)});
+// ===== 历史 =====
+function getHist() { try { return JSON.parse(localStorage.getItem(HIST_KEY)||'[]'); } catch { return []; } }
+function saveHist(items) {
+  const h = getHist();
+  h.unshift(...items);
+  localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0,60)));
+  renderHist();
 }
-function clearHistory(){if(confirm('确定清空？')){localStorage.removeItem(HIST_KEY);renderHistory()}}
-function openPreview(url){document.getElementById('previewImg').src=url;document.getElementById('previewDl').href=url;document.getElementById('previewOverlay').classList.add('show')}
-function closePreview(){document.getElementById('previewOverlay').classList.remove('show')}
-document.getElementById('previewOverlay').onclick=function(e){if(e.target===this)closePreview()};
-renderHistory();
+function clearHist() { if(confirm('确定清空？')) { localStorage.removeItem(HIST_KEY); renderHist(); } }
+function renderHist() {
+  const h = getHist();
+  const scroll = document.getElementById('histScroll');
+  document.getElementById('histCount').textContent = `历史 ${h.length}`;
+  if(!h.length) { scroll.innerHTML='<span class="hist-empty">暂无记录</span>'; return; }
+  scroll.innerHTML='';
+  h.forEach(item => {
+    if(item.type==='image') {
+      const img = document.createElement('img');
+      img.className='hist-img'; img.src=item.url;
+      img.onerror=()=>img.remove();
+      img.onclick=()=>openModal('image',item.url);
+      scroll.appendChild(img);
+    } else {
+      const div = document.createElement('div');
+      div.className='hist-vid';
+      div.innerHTML=`<video src="${item.url}" muted preload="metadata"></video><div class="hist-vid-play">▶</div>`;
+      div.onclick=()=>openModal('video',item.url);
+      scroll.appendChild(div);
+    }
+  });
+}
+
+// ===== 初始化 =====
+document.getElementById('costBadge').textContent = `消耗 $${totalCost.toFixed(3)}`;
+renderHist();
 </script>
 </body>
 </html>
