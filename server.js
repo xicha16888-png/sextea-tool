@@ -5,7 +5,7 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 const replicate = new Replicate({
- auth: process.env.REPLICATE_API_TOKEN
+  auth: process.env.REPLICATE_API_TOKEN
 });
 
 app.post('/api/generate', async (req, res) => {
@@ -14,7 +14,8 @@ app.post('/api/generate', async (req, res) => {
       'black-forest-labs/flux-schnell',
       { input: req.body.input }
     );
-    res.json({ status: 'succeeded', output });
+    const urls = Array.isArray(output) ? output.map(o => typeof o === 'string' ? o : o.url()) : [output];
+    res.json({ status: 'succeeded', output: urls });
   } catch(e) {
     res.status(500).json({ detail: e.message });
   }
