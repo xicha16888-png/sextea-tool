@@ -5,7 +5,7 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 const replicate = new Replicate({
-  auth: 'r8_UQWY369ejx1TYyXB3SCsFCdnT5cMWuH1lOtDY'
+ auth: process.env.REPLICATE_API_TOKEN
 });
 
 app.post('/api/generate', async (req, res) => {
