@@ -332,6 +332,7 @@ main{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
 <div class="panel" id="panel-edit">
   <div class="subnav">
     <button class="sb active" onclick="sub('edit','mix',this)">🎚 混音合并</button>
+    <button class="sb" onclick="sub('edit','concat',this)">🔗 视频拼接</button>
     <button class="sb" onclick="sub('edit','beat',this)">🥁 鼓点剪辑</button>
     <button class="sb" onclick="sub('edit','upscale',this)">🔬 超清放大</button>
   </div>
@@ -409,6 +410,67 @@ main{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
       </div>
     </div>
     <button class="btn btn-ac" id="mixBtn" onclick="mixAudio()">🎚 合并导出视频</button>
+  </div>
+
+
+  <!-- 视频拼接 -->
+  <div class="sec" id="edit-concat">
+    <div class="tip tip-green">🔗 上传多段视频首尾拼接，生成一个长视频（如 5段×6秒 = 30秒）</div>
+    <div>
+      <div class="fl">上传视频片段（按顺序，最多8段）</div>
+      <div class="uz" id="concatZone">
+        <input type="file" accept="video/*" multiple onchange="upConcatVids(this)"/>
+        <div class="uz-icon">🔗</div>
+        <div class="uz-txt">上传多段视频，按顺序拼接</div>
+      </div>
+      <div id="concatVidList" style="display:none;margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+      <div style="font-size:10px;color:var(--t3);margin-top:4px" id="concatCount"></div>
+    </div>
+    <div class="divider"></div>
+    <div>
+      <div class="fl">旁白（选填）</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleConcatNarMode('tts')">✏️ 输入文字</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleConcatNarMode('upload')">📁 上传音频</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleConcatNarMode('none')">❌ 不要旁白</button>
+      </div>
+      <div id="concatNarTts" style="display:flex;flex-direction:column;gap:8px">
+        <textarea id="concatNarText" rows="2" placeholder="输入旁白文字..."></textarea>
+        <div class="g2">
+          <select id="concatNarLang"><option value="zh">🇨🇳 中文</option><option value="en">🇺🇸 英文</option><option value="km">🇰🇭 高棉语</option></select>
+          <button class="btn btn-blue" style="font-size:11px" id="concatNarBtn" onclick="genConcatNar()">🎙 生成旁白</button>
+        </div>
+        <div id="concatNarPrev" style="display:none"></div>
+      </div>
+      <div id="concatNarUpload" style="display:none">
+        <div class="uz" id="concatNarZone"><input type="file" accept="audio/*" onchange="upAudio(this,'concatNar')"/><div class="uz-icon">🎙</div><div class="uz-txt">上传旁白音频</div></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div>
+      <div class="fl">背景音乐（选填）</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleConcatBgMode('lib')">🎵 音乐库</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleConcatBgMode('upload')">📁 上传</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleConcatBgMode('none')">❌ 不要音乐</button>
+      </div>
+      <div id="concatBgLib">
+        <div class="music-lib" id="concatMusicLib"></div>
+      </div>
+      <div id="concatBgUpload" style="display:none">
+        <div class="uz" id="concatBgZone"><input type="file" accept="audio/*" onchange="upAudio(this,'concatBg')"/><div class="uz-icon">🎵</div><div class="uz-txt">上传背景音乐</div></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div>
+      <div class="fl">音量控制</div>
+      <div class="vol-group">
+        <div class="vol-row"><span class="vol-label">原视频声音</span><input type="range" class="vol-slider" min="0" max="2" step="0.1" value="0" id="concatOrigVol" oninput="$('concatOrigVolV').textContent=Math.round(this.value*100)+'%'"/><span class="vol-val" id="concatOrigVolV">0%</span></div>
+        <div class="vol-row"><span class="vol-label">旁白音量</span><input type="range" class="vol-slider" min="0" max="2" step="0.1" value="1" id="concatNarVol" oninput="$('concatNarVolV').textContent=Math.round(this.value*100)+'%'"/><span class="vol-val" id="concatNarVolV">100%</span></div>
+        <div class="vol-row"><span class="vol-label">背景音乐</span><input type="range" class="vol-slider" min="0" max="1" step="0.05" value="0.3" id="concatBgVol" oninput="$('concatBgVolV').textContent=Math.round(this.value*100)+'%'"/><span class="vol-val" id="concatBgVolV">30%</span></div>
+      </div>
+    </div>
+    <button class="btn btn-ac" id="concatBtn" onclick="concatVideos()">🔗 拼接合并视频</button>
   </div>
 
   <!-- 鼓点剪辑 -->
@@ -653,6 +715,8 @@ function upAudio(input,key){
     else if(key==='bg'){bgAudioB64=e.target.result;bgAudioUrl=url;}
     else if(key==='beatBg'){bgAudioB64=e.target.result;bgAudioUrl=url;}
     else if(key==='beatNar'){narAudioUrl=url;}
+    else if(key==='concatNar'){concatNarAudioUrl=url;}
+    else if(key==='concatBg'){concatBgAudioB64=e.target.result;concatBgAudioUrl=url;}
   };
   rd.readAsDataURL(file);
   // 显示预览
@@ -1101,6 +1165,153 @@ function renderHist(){
     if(item.type==='image'){const img=document.createElement('img');img.className='himg';img.src=item.url;img.onerror=()=>img.remove();img.onclick=()=>openModal('image',item.url);scroll.appendChild(img)}
     else{const div=document.createElement('div');div.className='hvid';div.innerHTML=`<video src="${item.url}" muted preload="metadata"></video><div class="hvid-play">▶</div>`;div.onclick=()=>openModal('video',item.url);scroll.appendChild(div)}
   });
+}
+
+
+// ===== 视频拼接变量 =====
+let concatVidsB64 = [];
+let concatNarAudioUrl = '';
+let concatBgAudioUrl = '';
+let concatBgAudioB64 = '';
+let concatSelectedMusic = null;
+
+function upConcatVids(input) {
+  const files = Array.from(input.files).slice(0, 8);
+  concatVidsB64 = new Array(files.length).fill('');
+  let loaded = 0;
+  files.forEach((f, i) => {
+    const rd = new FileReader();
+    rd.onload = e => {
+      concatVidsB64[i] = e.target.result;
+      if (++loaded === files.length) renderConcatList();
+    };
+    rd.readAsDataURL(f);
+  });
+}
+
+function renderConcatList() {
+  const list = $('concatVidList');
+  list.style.display = 'flex';
+  list.innerHTML = concatVidsB64.filter(Boolean).map((b, i) => `
+    <div style="display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px 10px">
+      <span style="font-size:11px;color:var(--t3);width:20px">${i+1}</span>
+      <video src="${b}" style="width:80px;height:46px;object-fit:cover;border-radius:5px" muted></video>
+      <div style="flex:1">
+        <div style="font-size:11px;color:var(--t2)">片段 ${i+1}</div>
+        <div style="font-size:10px;color:var(--t3)">点击拖动排序</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <button style="background:var(--s3);border:1px solid var(--b1);border-radius:4px;color:var(--t2);font-size:11px;padding:2px 6px;cursor:pointer" onclick="moveConcatVid(${i},-1)">↑</button>
+        <button style="background:var(--s3);border:1px solid var(--b1);border-radius:4px;color:var(--t2);font-size:11px;padding:2px 6px;cursor:pointer" onclick="moveConcatVid(${i},1)">↓</button>
+      </div>
+      <button style="background:rgba(255,74,74,.15);border:1px solid rgba(255,74,74,.3);border-radius:4px;color:var(--red);font-size:11px;padding:4px 8px;cursor:pointer" onclick="removeConcatVid(${i})">删除</button>
+    </div>
+  `).join('');
+  $('concatCount').textContent = `共 ${concatVidsB64.filter(Boolean).length} 段视频，预计总时长约 ${concatVidsB64.filter(Boolean).length * 6} 秒`;
+}
+
+function moveConcatVid(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= concatVidsB64.length) return;
+  [concatVidsB64[i], concatVidsB64[j]] = [concatVidsB64[j], concatVidsB64[i]];
+  renderConcatList();
+}
+
+function removeConcatVid(i) {
+  concatVidsB64.splice(i, 1);
+  renderConcatList();
+}
+
+function toggleConcatNarMode(mode) {
+  $('concatNarTts').style.display = mode === 'tts' ? 'flex' : 'none';
+  $('concatNarUpload').style.display = mode === 'upload' ? 'block' : 'none';
+  if (mode === 'none') concatNarAudioUrl = '';
+}
+
+function toggleConcatBgMode(mode) {
+  $('concatBgLib').style.display = mode === 'lib' ? 'block' : 'none';
+  $('concatBgUpload').style.display = mode === 'upload' ? 'block' : 'none';
+  if (mode === 'none') { concatBgAudioUrl = ''; concatBgAudioB64 = ''; concatSelectedMusic = null; }
+  if (mode === 'lib') renderConcatMusicLib();
+}
+
+function renderConcatMusicLib() {
+  const el = $('concatMusicLib');
+  if (!el) return;
+  el.innerHTML = MUSIC_LIB.map(m => `
+    <div class="music-card" id="cmc_${m.id}" onclick="selectConcatMusic('${m.id}','${m.url}')">
+      <span class="mc-icon">${m.icon}</span>
+      <div class="mc-info"><div class="mc-name">${m.name}</div><div class="mc-genre">${m.genre}</div></div>
+    </div>`).join('');
+}
+
+function selectConcatMusic(id, url) {
+  document.querySelectorAll('[id^=cmc_]').forEach(c => c.classList.remove('selected'));
+  const el = document.getElementById('cmc_' + id);
+  if (el) el.classList.add('selected');
+  concatBgAudioUrl = url;
+  concatSelectedMusic = { id, url };
+}
+
+async function genConcatNar() {
+  const text = $('concatNarText').value.trim();
+  if (!text) { alert('请输入旁白文字'); return; }
+  setBtn('concatNarBtn', true, '⟳ 生成中...');
+  try {
+    const r = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, language: $('concatNarLang').value }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || '失败');
+    concatNarAudioUrl = d.audio_url;
+    $('concatNarPrev').style.display = 'block';
+    $('concatNarPrev').innerHTML = `<div class="audio-preview"><span class="ap-icon">🎙</span><div class="ap-info"><div class="ap-name">旁白已生成</div></div><audio src="${d.audio_url}" controls style="height:28px;flex:1"></audio></div>`;
+  } catch(e) { alert('❌ ' + e.message); }
+  finally { setBtn('concatNarBtn', false, '🎙 生成旁白'); }
+}
+
+async function concatVideos() {
+  const vids = concatVidsB64.filter(Boolean);
+  if (vids.length < 2) { showErr('请至少上传2段视频'); return; }
+  setBtn('concatBtn', true, '⟳ 拼接中...');
+  startLoad(
+    `拼接 ${vids.length} 段视频中...`,
+    `FFmpeg · 预计总时长约 ${vids.length * 6} 秒`,
+    vids.map((_, i) => `处理片段 ${i+1}`).concat(['混入音轨', '导出完整视频'])
+  );
+  const t0 = Date.now();
+  try {
+    setStep(0, vids.length + 2);
+    const payload = {
+      videos_b64: vids,
+      narration_url: concatNarAudioUrl || null,
+      music_url: concatSelectedMusic?.url || concatBgAudioUrl || null,
+      music_b64: concatBgAudioB64 || null,
+      music_volume: parseFloat($('concatBgVol').value),
+      narration_volume: parseFloat($('concatNarVol').value),
+      original_volume: parseFloat($('concatOrigVol').value)
+    };
+    // 模拟进度
+    let step = 0;
+    const iv = setInterval(() => { step = Math.min(step + 1, vids.length); setStep(step, vids.length + 2); }, 3000);
+    const r = await fetch('/api/concat-videos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    clearInterval(iv);
+    setStep(vids.length + 1, vids.length + 2);
+    stopLoad();
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || '失败');
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+    showSt('result');
+    $('resultContent').innerHTML = `
+      <div class="vplayer">
+        <video src="${d.output}" controls autoplay loop playsinline></video>
+        <div class="vinfo">
+          <span>🔗 拼接视频 · ${vids.length} 段合并</span>
+          <span>${elapsed}s</span>
+        </div>
+      </div>`;
+    $('resultBar').innerHTML = `<a class="rbb primary" href="${d.output}" download="concat_video_${Date.now()}.mp4">⬇ 下载完整视频</a><button class="rbb" onclick="openModal('video','${d.output}')">🔍 全屏预览</button>`;
+    $('resultMeta').innerHTML = `${vids.length} 段拼接完成 · 耗时 <b>${elapsed}s</b>`;
+  } catch(e) { showErr('❌ ' + e.message); }
+  finally { setBtn('concatBtn', false, '🔗 拼接合并视频'); }
 }
 
 // ===== 初始化 =====
