@@ -6,23 +6,40 @@
 <title>AI 生图工具</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0c0c0c;color:#f5f5f5;font-family:sans-serif;min-height:100vh;display:grid;grid-template-columns:360px 1fr;grid-template-rows:56px 1fr}
+body{background:#0c0c0c;color:#f5f5f5;font-family:sans-serif;min-height:100vh;display:grid;grid-template-columns:380px 1fr;grid-template-rows:56px 1fr}
 header{grid-column:1/-1;background:#141414;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;padding:0 24px;gap:12px}
-aside{background:#141414;border-right:1px solid rgba(255,255,255,0.08);padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:18px}
+aside{background:#141414;border-right:1px solid rgba(255,255,255,0.08);padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
 .lbl{font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
 textarea,input,select{width:100%;background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#f5f5f5;font-size:13px;padding:10px 12px;outline:none;font-family:inherit}
 textarea{resize:none;line-height:1.6}
-#prompt{height:120px}
-#neg{height:70px;font-size:12px}
+#prompt{height:100px}
+#neg{height:60px;font-size:12px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .opt label{font-size:11px;color:#555;display:block;margin-bottom:5px}
 .sr{display:flex;gap:8px}
 .sr input{flex:1}
 .rb{background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#888;width:36px;height:36px;cursor:pointer;font-size:18px;flex-shrink:0}
-.gb{width:100%;background:#e8ff4a;color:#0c0c0c;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
+.gb{width:100%;background:#e8ff4a;color:#0c0c0c;border:none;border-radius:12px;padding:12px;font-size:15px;font-weight:700;cursor:pointer}
 .gb:disabled{background:#2a2a2a;color:#555;cursor:not-allowed}
+.tab-bar{display:flex;gap:4px;background:#0c0c0c;border-radius:10px;padding:4px}
+.tab{flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:#555;font-family:inherit;transition:all .15s}
+.tab.active{background:#1c1c1c;color:#f5f5f5}
+.tab-content{display:none}
+.tab-content.active{display:flex;flex-direction:column;gap:14px}
+.upload-zone{border:2px dashed rgba(255,255,255,0.14);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:border-color .15s;position:relative}
+.upload-zone:hover{border-color:#e8ff4a}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-zone img{max-width:100%;max-height:160px;border-radius:8px;margin-top:12px;display:none}
+.upload-txt{font-size:13px;color:#555}
+.strength-row{display:flex;align-items:center;gap:10px}
+.strength-row input[type=range]{flex:1;height:4px}
+.strength-val{font-size:12px;color:#888;min-width:32px;text-align:right}
+.action-bar{display:flex;gap:8px}
+.action-bar button{flex:1;background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#888;padding:9px;font-size:13px;cursor:pointer;font-family:inherit}
+.action-bar button:hover{color:#f5f5f5}
+.action-bar button.primary{background:#e8ff4a;color:#0c0c0c;border-color:#e8ff4a;font-weight:700}
 main{background:#0c0c0c;display:flex;flex-direction:column;overflow-y:auto}
-.canvas{flex:1;display:flex;align-items:center;justify-content:center;padding:32px}
+.canvas{flex:1;display:flex;align-items:center;justify-content:center;padding:32px;min-height:400px}
 .empty{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
 .pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
 .pill{background:#141414;border:1px solid rgba(255,255,255,0.14);border-radius:20px;padding:5px 13px;font-size:12px;color:#888;cursor:pointer}
@@ -31,13 +48,14 @@ main{background:#0c0c0c;display:flex;flex-direction:column;overflow-y:auto}
 .ring{width:56px;height:56px;border:2px solid rgba(255,255,255,0.1);border-top-color:#e8ff4a;border-radius:50%;animation:spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .res{display:none;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:520px}
-.res img{width:100%;border-radius:12px;border:1px solid rgba(255,255,255,0.1)}
+.res img{width:100%;border-radius:12px;border:1px solid rgba(255,255,255,0.1);cursor:pointer}
 .acts{display:flex;gap:10px;width:100%}
 .ab{flex:1;background:#141414;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#888;padding:9px;font-size:13px;cursor:pointer;text-align:center;text-decoration:none;display:block;font-family:inherit}
 .ab:hover{color:#f5f5f5}
 .err{display:none;background:rgba(200,50,50,.1);border:1px solid rgba(200,50,50,.25);border-radius:12px;padding:16px;font-size:13px;color:#f88;text-align:center;max-width:380px}
-
-/* 历史记录区域 */
+.interrogate-result{background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:10px;padding:14px;font-size:13px;line-height:1.7;color:#ddd;display:none;word-break:break-all}
+.copy-prompt-btn{width:100%;background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#888;padding:9px;font-size:12px;cursor:pointer;display:none;font-family:inherit;margin-top:6px}
+.copy-prompt-btn:hover{color:#f5f5f5}
 .history-section{background:#0a0a0a;border-top:1px solid rgba(255,255,255,0.06);padding:16px 24px}
 .history-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .history-title{font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:1px}
@@ -45,20 +63,16 @@ main{background:#0c0c0c;display:flex;flex-direction:column;overflow-y:auto}
 .clear-btn:hover{color:#f88}
 .hist-grid{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
 .hist-grid::-webkit-scrollbar{height:4px}
-.hist-grid::-webkit-scrollbar-track{background:#1a1a1a}
 .hist-grid::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
-.hist-item{flex-shrink:0;position:relative;cursor:pointer}
-.hist-item img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:2px solid transparent;transition:border-color .15s;display:block}
-.hist-item:hover img{border-color:#e8ff4a}
+.hist-item img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:2px solid transparent;cursor:pointer;display:block}
+.hist-item img:hover{border-color:#e8ff4a}
 .hist-empty{font-size:12px;color:#333;padding:8px 0}
-
-/* 全屏预览 */
-.preview-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.preview-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:16px}
 .preview-overlay.show{display:flex}
 .preview-overlay img{max-width:90vw;max-height:80vh;border-radius:12px}
 .preview-close{position:absolute;top:20px;right:24px;color:#888;font-size:28px;cursor:pointer;background:none;border:none}
-.preview-actions{display:flex;gap:12px}
-.preview-actions a,.preview-actions button{background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#f5f5f5;padding:8px 20px;font-size:13px;cursor:pointer;text-decoration:none;font-family:inherit}
+.pacts{display:flex;gap:12px}
+.pacts a,.pacts button{background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#f5f5f5;padding:8px 20px;font-size:13px;cursor:pointer;text-decoration:none;font-family:inherit}
 </style>
 </head>
 <body>
@@ -66,20 +80,68 @@ main{background:#0c0c0c;display:flex;flex-direction:column;overflow-y:auto}
   <div style="width:10px;height:10px;background:#e8ff4a;border-radius:50%"></div>
   <span style="font-size:15px;font-weight:600">AI 生图工具</span>
   <span style="font-size:12px;color:#555;margin-left:4px">· Replicate Flux</span>
-  <span style="font-size:12px;color:#333;margin-left:auto" id="balanceInfo"></span>
 </header>
 
 <aside>
-  <div><div class="lbl">图片描述</div><textarea id="prompt" placeholder="A beautiful woman in a cafe, natural light, cinematic..."></textarea></div>
-  <div><div class="lbl">不要的内容</div><textarea id="neg" placeholder="blur, low quality, watermark..."></textarea></div>
-  <div><div class="lbl">参数</div><div class="g2">
-    <div class="opt"><label>比例</label><select id="ratio"><option value="1:1">正方形 1:1</option><option value="16:9">横版 16:9</option><option value="9:16" selected>竖版 9:16</option><option value="4:3">4:3</option><option value="3:4">3:4</option></select></div>
-    <div class="opt"><label>数量</label><select id="count"><option value="1" selected>1 张</option><option value="2">2 张</option><option value="4">4 张</option></select></div>
-    <div class="opt"><label>步数</label><select id="steps"><option value="1">1步 最快</option><option value="2">2步</option><option value="3">3步</option><option value="4" selected>4步 最佳</option></select></div>
-    <div class="opt"><label>格式</label><select id="fmt"><option value="jpg" selected>JPG</option><option value="webp">WebP</option><option value="png">PNG</option></select></div>
-  </div></div>
-  <div><div class="lbl">随机种子</div><div class="sr"><input type="number" id="seed" placeholder="留空=随机"/><button class="rb" onclick="document.getElementById('seed').value=Math.floor(Math.random()*2147483647)">⟳</button></div></div>
-  <button class="gb" id="gb" onclick="gen()">✦ 生成图片</button>
+  <!-- 标签切换 -->
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('txt2img',this)">文字生图</button>
+    <button class="tab" onclick="switchTab('img2img',this)">图生图</button>
+    <button class="tab" onclick="switchTab('interrogate',this)">反推提示词</button>
+  </div>
+
+  <!-- 文字生图 -->
+  <div class="tab-content active" id="tab-txt2img">
+    <div><div class="lbl">图片描述</div><textarea id="prompt" placeholder="A beautiful woman in a cafe, natural light, cinematic..."></textarea></div>
+    <div><div class="lbl">不要的内容</div><textarea id="neg" placeholder="blur, low quality, watermark..."></textarea></div>
+    <div><div class="lbl">参数</div><div class="g2">
+      <div class="opt"><label>比例</label><select id="ratio"><option value="1:1">正方形 1:1</option><option value="16:9">横版 16:9</option><option value="9:16" selected>竖版 9:16</option><option value="4:3">4:3</option><option value="3:4">3:4</option></select></div>
+      <div class="opt"><label>数量</label><select id="count"><option value="1" selected>1 张</option><option value="2">2 张</option><option value="4">4 张</option></select></div>
+      <div class="opt"><label>步数</label><select id="steps"><option value="1">1步</option><option value="2">2步</option><option value="3">3步</option><option value="4" selected>4步</option></select></div>
+      <div class="opt"><label>格式</label><select id="fmt"><option value="jpg" selected>JPG</option><option value="webp">WebP</option><option value="png">PNG</option></select></div>
+    </div></div>
+    <div><div class="lbl">随机种子</div><div class="sr"><input type="number" id="seed" placeholder="留空=随机"/><button class="rb" onclick="document.getElementById('seed').value=Math.floor(Math.random()*2147483647)">⟳</button></div></div>
+    <button class="gb" id="gb" onclick="genTxt()">✦ 生成图片</button>
+  </div>
+
+  <!-- 图生图 -->
+  <div class="tab-content" id="tab-img2img">
+    <div>
+      <div class="lbl">参考图片</div>
+      <div class="upload-zone" id="i2iZone">
+        <input type="file" accept="image/*" onchange="handleUpload(this,'i2i')"/>
+        <div class="upload-txt">点击或拖入图片</div>
+        <img id="i2iPreview"/>
+      </div>
+    </div>
+    <div><div class="lbl">描述（想改成什么）</div><textarea id="i2iPrompt" placeholder="sexy Chinese woman in qipao, logo style, red background..." style="height:80px"></textarea></div>
+    <div>
+      <div class="lbl">参考强度 <span id="strengthVal" style="color:#888">0.75</span></div>
+      <div class="strength-row">
+        <span style="font-size:11px;color:#555">弱（更像原图）</span>
+        <input type="range" min="0.1" max="1" step="0.05" value="0.75" id="strength" oninput="document.getElementById('strengthVal').textContent=this.value"/>
+        <span style="font-size:11px;color:#555">强（更自由）</span>
+      </div>
+    </div>
+    <button class="gb" id="i2iBtn" onclick="genImg2Img()">✦ 图生图</button>
+  </div>
+
+  <!-- 反推提示词 -->
+  <div class="tab-content" id="tab-interrogate">
+    <div>
+      <div class="lbl">上传图片</div>
+      <div class="upload-zone" id="iqZone">
+        <input type="file" accept="image/*" onchange="handleUpload(this,'iq')"/>
+        <div class="upload-txt">上传图片，自动生成提示词</div>
+        <img id="iqPreview"/>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="primary" onclick="doInterrogate()">🔍 反推提示词</button>
+    </div>
+    <div id="interrogateResult" class="interrogate-result"></div>
+    <button class="copy-prompt-btn" id="copyPromptBtn" onclick="copyPromptToTxt()">📋 复制到文字生图</button>
+  </div>
 </aside>
 
 <main>
@@ -87,7 +149,7 @@ main{background:#0c0c0c;display:flex;flex-direction:column;overflow-y:auto}
     <div class="empty" id="empty">
       <div style="font-size:48px;opacity:.3;margin-bottom:8px">🎨</div>
       <div style="font-size:18px;color:#888">开始创作</div>
-      <div style="font-size:13px;color:#555;margin-top:6px">输入任何描述，点击生成</div>
+      <div style="font-size:13px;color:#555;margin-top:6px">输入描述或上传图片</div>
       <div class="pills">
         <div class="pill" onclick="fp(this)">美女咖啡厅自然光</div>
         <div class="pill" onclick="fp(this)">产品广告图简洁背景</div>
@@ -96,7 +158,7 @@ main{background:#0c0c0c;display:flex;flex-direction:column;overflow-y:auto}
         <div class="pill" onclick="fp(this)">医美医院现代室内</div>
       </div>
     </div>
-    <div class="ld" id="ld"><div class="ring"></div><div style="font-size:14px;color:#888" id="ltxt">正在生成...</div><div style="font-size:12px;color:#555">通常 5~15 秒</div></div>
+    <div class="ld" id="ld"><div class="ring"></div><div style="font-size:14px;color:#888" id="ltxt">正在处理...</div><div style="font-size:12px;color:#555">请稍候</div></div>
     <div class="err" id="err"></div>
     <div class="res" id="res">
       <div id="iw" style="width:100%"></div>
@@ -105,31 +167,27 @@ main{background:#0c0c0c;display:flex;flex-direction:column;overflow-y:auto}
     </div>
   </div>
 
-  <!-- 历史记录 -->
-  <div class="history-section" id="histSection">
+  <div class="history-section">
     <div class="history-header">
       <span class="history-title">历史记录</span>
       <button class="clear-btn" onclick="clearHistory()">清空</button>
     </div>
-    <div class="hist-grid" id="histGrid">
-      <div class="hist-empty">暂无历史记录</div>
-    </div>
+    <div class="hist-grid" id="histGrid"><div class="hist-empty">暂无历史记录</div></div>
   </div>
 </main>
 
-<!-- 全屏预览 -->
 <div class="preview-overlay" id="previewOverlay">
   <button class="preview-close" onclick="closePreview()">✕</button>
   <img id="previewImg" src="" alt="预览"/>
-  <div class="preview-actions">
+  <div class="pacts">
     <a id="previewDl" href="" download="ai_img.jpg" target="_blank">⬇ 下载</a>
     <button onclick="closePreview()">关闭</button>
   </div>
 </div>
 
 <script>
-const HIST_KEY = 'ai_img_history_v2';
-const PM = {
+const HIST_KEY='ai_img_history_v2';
+const PM={
   '美女咖啡厅自然光':'A beautiful young woman sitting in a modern cafe, natural light, cinematic photography, high quality, 8k',
   '产品广告图简洁背景':'Product advertisement photo, clean white background, minimalist style, professional lighting, commercial photography',
   '城市夜景霓虹灯':'City night scene, neon lights, rain reflection, cinematic, cyberpunk atmosphere, high detail',
@@ -137,124 +195,153 @@ const PM = {
   '医美医院现代室内':'Modern medical aesthetics hospital interior, clean white design, luxury atmosphere, professional lighting'
 };
 
-function fp(el){document.getElementById('prompt').value=PM[el.textContent]||el.textContent}
+let i2iBase64='', iqBase64='';
+
+function fp(el){
+  document.getElementById('prompt').value=PM[el.textContent]||el.textContent;
+  switchTabByName('txt2img');
+}
+
+function switchTab(name,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+function switchTabByName(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.remove('active');
+    if(['txt2img','img2img','interrogate'][i]===name)t.classList.add('active');
+  });
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+function handleUpload(input,type){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const b64=e.target.result;
+    if(type==='i2i'){
+      i2iBase64=b64;
+      const img=document.getElementById('i2iPreview');
+      img.src=b64;img.style.display='block';
+      document.querySelector('#i2iZone .upload-txt').textContent='点击重新上传';
+    }else{
+      iqBase64=b64;
+      const img=document.getElementById('iqPreview');
+      img.src=b64;img.style.display='block';
+      document.querySelector('#iqZone .upload-txt').textContent='点击重新上传';
+    }
+  };
+  reader.readAsDataURL(file);
+}
 
 function show(id){
-  ['empty','ld','err','res'].forEach(i=>{
-    const e=document.getElementById(i);if(e)e.style.display='none';
-  });
+  ['empty','ld','err','res'].forEach(i=>{const e=document.getElementById(i);if(e)e.style.display='none'});
   const t=document.getElementById(id);
   if(t)t.style.display=(id==='res'||id==='ld')?'flex':'block';
 }
 
-async function gen(){
+async function genTxt(){
   const prompt=document.getElementById('prompt').value.trim();
   if(!prompt){showErr('请输入图片描述');return}
   const btn=document.getElementById('gb');
   btn.disabled=true;btn.textContent='⟳ 生成中...';
-  show('ld');
+  show('ld');document.getElementById('ltxt').textContent='正在生成...';
   const t0=Date.now();
   const steps=parseInt(document.getElementById('steps').value);
   const count=parseInt(document.getElementById('count').value);
   const seedVal=document.getElementById('seed').value;
-  const input={
-    prompt,
-    num_outputs:count,
-    aspect_ratio:document.getElementById('ratio').value,
-    num_inference_steps:steps,
-    output_format:document.getElementById('fmt').value,
-    output_quality:95
-  };
+  const input={prompt,num_outputs:count,aspect_ratio:document.getElementById('ratio').value,num_inference_steps:steps,output_format:document.getElementById('fmt').value,output_quality:95};
   if(seedVal)input.seed=parseInt(seedVal);
   try{
     const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({input})});
     const data=await r.json();
     if(!r.ok)throw new Error(data.detail||'错误 '+r.status);
-    if(data.status==='failed')throw new Error(data.error||'生成失败');
-    if(!data.output||!data.output.length)throw new Error('未返回结果，请重试');
-    const elapsed=((Date.now()-t0)/1000).toFixed(1);
-    renderResult(data.output,elapsed,(steps/4)*0.003*count);
+    if(!data.output||!data.output.length)throw new Error('未返回结果');
+    renderResult(data.output,((Date.now()-t0)/1000).toFixed(1),(steps/4)*0.003*count);
   }catch(e){showErr('❌ '+e.message)}
   finally{btn.disabled=false;btn.textContent='✦ 生成图片'}
 }
 
+async function genImg2Img(){
+  if(!i2iBase64){showErr('请先上传参考图片');return}
+  const prompt=document.getElementById('i2iPrompt').value.trim();
+  if(!prompt){showErr('请输入描述');return}
+  const btn=document.getElementById('i2iBtn');
+  btn.disabled=true;btn.textContent='⟳ 生成中...';
+  show('ld');document.getElementById('ltxt').textContent='图生图处理中，约30秒...';
+  const t0=Date.now();
+  try{
+    const r=await fetch('/api/img2img',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:i2iBase64,prompt,strength:parseFloat(document.getElementById('strength').value)})});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data.detail||'错误 '+r.status);
+    if(!data.output||!data.output.length)throw new Error('未返回结果');
+    renderResult(data.output,((Date.now()-t0)/1000).toFixed(1),0.025);
+  }catch(e){showErr('❌ '+e.message)}
+  finally{btn.disabled=false;btn.textContent='✦ 图生图'}
+}
+
+async function doInterrogate(){
+  if(!iqBase64){showErr('请先上传图片');return}
+  show('ld');document.getElementById('ltxt').textContent='正在分析图片，约30秒...';
+  document.getElementById('interrogateResult').style.display='none';
+  document.getElementById('copyPromptBtn').style.display='none';
+  try{
+    const r=await fetch('/api/interrogate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:iqBase64})});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data.detail||'错误');
+    show('empty');
+    const result=document.getElementById('interrogateResult');
+    result.textContent=data.prompt;
+    result.style.display='block';
+    document.getElementById('copyPromptBtn').style.display='block';
+  }catch(e){showErr('❌ '+e.message)}
+}
+
+function copyPromptToTxt(){
+  const p=document.getElementById('interrogateResult').textContent;
+  document.getElementById('prompt').value=p;
+  switchTabByName('txt2img');
+  document.getElementById('copyPromptBtn').textContent='✓ 已复制到文字生图';
+  setTimeout(()=>document.getElementById('copyPromptBtn').textContent='📋 复制到文字生图',2000);
+}
+
 function renderResult(urls,elapsed,cost){
   show('res');
-  // 保存历史
   const hist=getHistory();
   urls.forEach(url=>hist.unshift({url,time:Date.now()}));
   saveHistory(hist.slice(0,50));
   renderHistory();
-
   const iw=document.getElementById('iw');iw.innerHTML='';iw.style.width='100%';
   if(urls.length===1){
-    const img=document.createElement('img');
-    img.src=urls[0];
-    img.style.cursor='pointer';
-    img.onclick=()=>openPreview(urls[0]);
-    iw.appendChild(img);
+    const img=document.createElement('img');img.src=urls[0];img.onclick=()=>openPreview(urls[0]);iw.appendChild(img);
   }else{
     iw.style.display='grid';iw.style.gridTemplateColumns='1fr 1fr';iw.style.gap='10px';
-    urls.forEach(url=>{
-      const img=document.createElement('img');
-      img.src=url;img.style.cssText='width:100%;border-radius:10px;cursor:pointer';
-      img.onclick=()=>openPreview(url);
-      iw.appendChild(img);
-    });
+    urls.forEach(url=>{const img=document.createElement('img');img.src=url;img.style.cssText='width:100%;border-radius:10px;cursor:pointer';img.onclick=()=>openPreview(url);iw.appendChild(img)});
   }
   const acts=document.getElementById('acts');acts.innerHTML='';
   const dl=document.createElement('a');dl.className='ab';dl.href=urls[0];dl.download='ai_img_'+Date.now()+'.jpg';dl.target='_blank';dl.textContent='⬇ 下载';acts.appendChild(dl);
   const cp=document.createElement('button');cp.className='ab';cp.textContent='🔗 复制链接';
-  cp.onclick=()=>navigator.clipboard.writeText(urls[0]).then(()=>{cp.textContent='✓ 已复制';setTimeout(()=>cp.textContent='🔗 复制链接',2000)});
-  acts.appendChild(cp);
-  document.getElementById('mt').innerHTML='耗时 '+elapsed+'s · 消耗 $'+cost.toFixed(3);
+  cp.onclick=()=>navigator.clipboard.writeText(urls[0]).then(()=>{cp.textContent='✓ 已复制';setTimeout(()=>cp.textContent='🔗 复制链接',2000)});acts.appendChild(cp);
+  document.getElementById('mt').innerHTML='耗时 '+elapsed+'s · 消耗约 $'+cost.toFixed(3);
 }
 
 function showErr(msg){show('err');document.getElementById('err').textContent=msg}
-
-// 历史记录
 function getHistory(){try{return JSON.parse(localStorage.getItem(HIST_KEY)||'[]')}catch{return[]}}
 function saveHistory(h){localStorage.setItem(HIST_KEY,JSON.stringify(h))}
-
 function renderHistory(){
-  const hist=getHistory();
-  const grid=document.getElementById('histGrid');
+  const hist=getHistory();const grid=document.getElementById('histGrid');
   if(!hist.length){grid.innerHTML='<div class="hist-empty">暂无历史记录</div>';return}
   grid.innerHTML='';
-  hist.forEach(item=>{
-    const div=document.createElement('div');div.className='hist-item';
-    const img=document.createElement('img');img.src=item.url;
-    img.onerror=()=>div.remove();
-    img.onclick=()=>openPreview(item.url);
-    div.appendChild(img);
-    grid.appendChild(div);
-  });
+  hist.forEach(item=>{const div=document.createElement('div');div.className='hist-item';const img=document.createElement('img');img.src=item.url;img.onerror=()=>div.remove();img.onclick=()=>openPreview(item.url);div.appendChild(img);grid.appendChild(div)});
 }
-
-function clearHistory(){
-  if(confirm('确定清空所有历史记录？')){
-    localStorage.removeItem(HIST_KEY);
-    renderHistory();
-  }
-}
-
-function openPreview(url){
-  document.getElementById('previewImg').src=url;
-  document.getElementById('previewDl').href=url;
-  document.getElementById('previewDl').download='ai_img_'+Date.now()+'.jpg';
-  document.getElementById('previewOverlay').classList.add('show');
-}
-
-function closePreview(){
-  document.getElementById('previewOverlay').classList.remove('show');
-}
-
-// 点击背景关闭预览
-document.getElementById('previewOverlay').onclick=function(e){
-  if(e.target===this)closePreview();
-};
-
-// 初始化历史
+function clearHistory(){if(confirm('确定清空？')){localStorage.removeItem(HIST_KEY);renderHistory()}}
+function openPreview(url){document.getElementById('previewImg').src=url;document.getElementById('previewDl').href=url;document.getElementById('previewOverlay').classList.add('show')}
+function closePreview(){document.getElementById('previewOverlay').classList.remove('show')}
+document.getElementById('previewOverlay').onclick=function(e){if(e.target===this)closePreview()};
 renderHistory();
 </script>
 </body>
