@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 生图工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0c0c0c;color:#f5f5f5;font-family:sans-serif;min-height:100vh;display:grid;grid-template-columns:360px 1fr;grid-template-rows:56px 1fr}
+header{grid-column:1/-1;background:#141414;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;padding:0 24px;gap:12px}
+aside{background:#141414;border-right:1px solid rgba(255,255,255,0.08);padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:18px}
+.lbl{font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
+textarea,input,select{width:100%;background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#f5f5f5;font-size:13px;padding:10px 12px;outline:none;font-family:inherit}
+textarea{resize:none;line-height:1.6}
+#prompt{height:120px}
+#neg{height:70px;font-size:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt label{font-size:11px;color:#555;display:block;margin-bottom:5px}
+.sr{display:flex;gap:8px}
+.sr input{flex:1}
+.rb{background:#1c1c1c;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#888;width:36px;height:36px;cursor:pointer;font-size:18px;flex-shrink:0}
+.gb{width:100%;background:#e8ff4a;color:#0c0c0c;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
+.gb:disabled{background:#2a2a2a;color:#555;cursor:not-allowed}
+main{background:#0c0c0c;display:flex;align-items:center;justify-content:center;padding:32px;overflow-y:auto}
+.empty{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
+.pill{background:#141414;border:1px solid rgba(255,255,255,0.14);border-radius:20px;padding:5px 13px;font-size:12px;color:#888;cursor:pointer}
+.pill:hover{color:#f5f5f5;border-color:#e8ff4a}
+.ld{display:none;flex-direction:column;align-items:center;gap:16px;text-align:center}
+.ring{width:56px;height:56px;border:2px solid rgba(255,255,255,0.1);border-top-color:#e8ff4a;border-radius:50%;animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.res{display:none;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:520px}
+.res img{width:100%;border-radius:12px;border:1px solid rgba(255,255,255,0.1)}
+.acts{display:flex;gap:10px;width:100%}
+.ab{flex:1;background:#141414;border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#888;padding:9px;font-size:13px;cursor:pointer;text-align:center;text-decoration:none;display:block;font-family:inherit}
+.ab:hover{color:#f5f5f5}
+.err{display:none;background:rgba(200,50,50,.1);border:1px solid rgba(200,50,50,.25);border-radius:12px;padding:16px;font-size:13px;color:#f88;text-align:center;max-width:380px}
+.hist{display:flex;gap:8px;overflow-x:auto;width:100%}
+.hi{width:52px;height:52px;border-radius:8px;object-fit:cover;cursor:pointer;border:2px solid transparent;flex-shrink:0}
+.hi:hover{border-color:#e8ff4a}
+</style>
+</head>
+<body>
+<header>
+<div style="width:10px;height:10px;background:#e8ff4a;border-radius:50%"></div>
+<span style="font-size:15px;font-weight:600">AI 生图工具</span>
+<span style="font-size:12px;color:#555;margin-left:4px">· Replicate Flux</span>
+</header>
+<aside>
+<div><div class="lbl">图片描述</div><textarea id="prompt" placeholder="A beautiful woman in a cafe, natural light, cinematic..."></textarea></div>
+<div><div class="lbl">不要的内容</div><textarea id="neg" placeholder="blur, low quality, watermark..."></textarea></div>
+<div><div class="lbl">参数</div><div class="g2">
+<div class="opt"><label>比例</label><select id="ratio"><option value="1:1">正方形 1:1</option><option value="16:9">横版 16:9</option><option value="9:16" selected>竖版 9:16</option><option value="4:3">4:3</option><option value="3:4">3:4</option></select></div>
+<div class="opt"><label>数量</label><select id="count"><option value="1" selected>1 张</option><option value="2">2 张</option><option value="4">4 张</option></select></div>
+<div class="opt"><label>步数</label><select id="steps"><option value="4" selected>快速 4步</option><option value="8">标准 8步</option></select></div>
+<div class="opt"><label>格式</label><select id="fmt"><option value="jpg" selected>JPG</option><option value="webp">WebP</option><option value="png">PNG</option></select></div>
+</div></div>
+<div><div class="lbl">随机种子</div><div class="sr"><input type="number" id="seed" placeholder="留空=随机"/><button class="rb" onclick="document.getElementById('seed').value=Math.floor(Math.random()*2147483647)">⟳</button></div></div>
+<button class="gb" id="gb" onclick="gen()">✦ 生成图片</button>
+</aside>
+<main>
+<div class="empty" id="empty">
+<div style="font-size:48px;opacity:.3;margin-bottom:8px">🎨</div>
+<div style="font-size:18px;color:#888">开始创作</div>
+<div style="font-size:13px;color:#555;margin-top:6px">输入任何描述，点击生成</div>
+<div class="pills">
+<div class="pill" onclick="fp(this)">美女咖啡厅自然光</div>
+<div class="pill" onclick="fp(this)">产品广告图简洁背景</div>
+<div class="pill" onclick="fp(this)">城市夜景霓虹灯</div>
+<div class="pill" onclick="fp(this)">古典仕女旗袍logo</div>
+<div class="pill" onclick="fp(this)">医美医院现代室内</div>
+</div>
+</div>
+<div class="ld" id="ld"><div class="ring"></div><div style="font-size:14px;color:#888" id="ltxt">正在生成...</div><div style="font-size:12px;color:#555">通常 10~30 秒</div></div>
+<div class="err" id="err"></div>
+<div class="res" id="res"><div id="iw" style="width:100%"></div><div class="acts" id="acts"></div><div style="font-size:12px;color:#555;margin-top:4px" id="mt"></div><div class="hist" id="hist"></div></div>
+</main>
+<script>
+const IMGS=[];
+const PM={'美女咖啡厅自然光':'A beautiful young woman sitting in a modern cafe, natural light, cinematic photography, high quality, 8k','产品广告图简洁背景':'Product advertisement photo, clean white background, minimalist style, professional lighting, commercial photography','城市夜景霓虹灯':'City night scene, neon lights, rain reflection, cinematic, cyberpunk atmosphere, high detail','古典仕女旗袍logo':'Classical Chinese beauty silhouette in qipao, red and black color scheme, elegant line art, brand logo, octagon frame, flat design','医美医院现代室内':'Modern medical aesthetics hospital interior, clean white design, luxury atmosphere, professional lighting'};
+function fp(el){document.getElementById('prompt').value=PM[el.textContent]||el.textContent}
+function show(id){['empty','ld','err','res'].forEach(i=>{const e=document.getElementById(i);if(e)e.style.display='none'});const t=document.getElementById(id);if(t)t.style.display=(id==='res'||id==='ld')?'flex':'block'}
+async function gen(){
+const prompt=document.getElementById('prompt').value.trim();
+if(!prompt){showErr('请输入图片描述');return}
+const btn=document.getElementById('gb');
+btn.disabled=true;btn.textContent='⟳ 生成中...';
+show('ld');
+const t0=Date.now();
+const steps=parseInt(document.getElementById('steps').value);
+const count=parseInt(document.getElementById('count').value);
+const seedVal=document.getElementById('seed').value;
+const input={prompt,num_outputs:count,aspect_ratio:document.getElementById('ratio').value,num_inference_steps:steps,output_format:document.getElementById('fmt').value,output_quality:95};
+if(seedVal)input.seed=parseInt(seedVal);
+try{
+const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({input})});
+const data=await r.json();
+if(!r.ok)throw new Error(data.detail||'错误 '+r.status);
+if(data.status==='failed')throw new Error(data.error||'生成失败');
+if(!data.output||!data.output.length)throw new Error('未返回结果，请重试');
+const elapsed=((Date.now()-t0)/1000).toFixed(1);
+renderResult(data.output,elapsed,(steps<=4?0.003:0.006)*count);
+}catch(e){showErr('❌ '+e.message)}
+finally{btn.disabled=false;btn.textContent='✦ 生成图片'}
+}
+function renderResult(urls,elapsed,cost){
+show('res');
+const iw=document.getElementById('iw');iw.innerHTML='';iw.style.width='100%';
+if(urls.length===1){const img=document.createElement('img');img.src=urls[0];iw.appendChild(img)}
+else{iw.style.display='grid';iw.style.gridTemplateColumns='1fr 1fr';iw.style.gap='10px';urls.forEach(url=>{const img=document.createElement('img');img.src=url;img.style.cssText='width:100%;border-radius:10px;border:1px solid rgba(255,255,255,0.1)';iw.appendChild(img)})}
+const acts=document.getElementById('acts');acts.innerHTML='';
+const dl=document.createElement('a');dl.className='ab';dl.href=urls[0];dl.download='ai_img_'+Date.now()+'.jpg';dl.target='_blank';dl.textContent='⬇ 下载';acts.appendChild(dl);
+const cp=document.createElement('button');cp.className='ab';cp.textContent='🔗 复制链接';cp.onclick=()=>navigator.clipboard.writeText(urls[0]).then(()=>{cp.textContent='✓ 已复制';setTimeout(()=>cp.textContent='🔗 复制链接',2000)});acts.appendChild(cp);
+document.getElementById('mt').innerHTML='耗时 '+elapsed+'s · 消耗 $'+cost.toFixed(3);
+IMGS.unshift(...urls);if(IMGS.length>10)IMGS.length=10;
+const hist=document.getElementById('hist');hist.innerHTML='';
+IMGS.slice(urls.length).forEach(url=>{const th=document.createElement('img');th.className='hi';th.src=url;th.onclick=()=>window.open(url,'_blank');hist.appendChild(th)});
+}
+function showErr(msg){show('err');document.getElementById('err').textContent=msg}
+</script>
+</body>
+</html>
