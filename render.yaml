@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: sextea-tool
+    env: node
+    buildCommand: apt-get install -y ffmpeg && npm install
+    startCommand: node server.js
+    envVars:
+      - key: REPLICATE_API_TOKEN
+        sync: false
