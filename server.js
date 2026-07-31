@@ -131,7 +131,7 @@ app.post('/api/txt2video', async (req, res) => {
   try {
     const { prompt, duration, ratio } = req.body;
     const output = await replicate.run('minimax/video-01', {
-      input: { prompt, duration: duration || 6, ratio: ratio || '16:9', resolution: '1080p', prompt_optimizer: true }
+      input: { prompt, duration: 6, ratio: ratio || '16:9', resolution: '1080p', prompt_optimizer: true }
     });
     const urls = extractUrls(output);
     const b64s = await urlsToB64(urls);
@@ -144,8 +144,10 @@ app.post('/api/img2video', async (req, res) => {
   try {
     const { image, prompt, duration } = req.body;
     const imgUrl = await b64toUrl(image);
+    // MiniMax 只支持 6 秒，强制锁定
+    const dur = 6;
     const output = await replicate.run('minimax/video-01', {
-      input: { prompt: prompt || 'smooth cinematic motion', first_frame_image: imgUrl, duration: duration || 6, ratio: '16:9', resolution: '1080p', prompt_optimizer: true }
+      input: { prompt: prompt || 'smooth cinematic motion', first_frame_image: imgUrl, duration: dur, ratio: '16:9', resolution: '1080p', prompt_optimizer: true }
     });
     const urls = extractUrls(output);
     const b64s = await urlsToB64(urls);
@@ -162,7 +164,7 @@ app.post('/api/imgs2video', async (req, res) => {
     for (let i = 0; i < images.length; i++) {
       const imgUrl = await b64toUrl(images[i]);
       const output = await replicate.run('minimax/video-01', {
-        input: { prompt: prompt || 'smooth cinematic motion', first_frame_image: imgUrl, duration: duration_per_image || 6, ratio: '16:9', resolution: '1080p', prompt_optimizer: true }
+        input: { prompt: prompt || 'smooth cinematic motion', first_frame_image: imgUrl, duration: 6, ratio: '16:9', resolution: '1080p', prompt_optimizer: true }
       });
       const urls = extractUrls(output);
       if (urls.length > 0) {
