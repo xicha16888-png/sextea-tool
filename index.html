@@ -276,16 +276,76 @@ main{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
   </div>
   <div class="sec" id="video-i2v">
     <div><div class="fl">起始图片</div><div class="uz" id="i2vZone"><input type="file" accept="image/*" onchange="up1(this,'i2v')"/><div class="uz-icon">🎬</div><div class="uz-txt">上传图片让它动起来</div><div class="up-grid" id="i2vPrev"></div></div></div>
-    <div><div class="fl">运动描述（选填）</div><textarea id="i2vPrompt" rows="2" placeholder="smooth cinematic zoom, soft light..."></textarea>
-      <div class="pills">
-        <div class="pill" onclick="ap('i2vPrompt','gentle camera pan')">平移</div>
-        <div class="pill" onclick="ap('i2vPrompt','slow zoom in')">推进</div>
-        <div class="pill" onclick="ap('i2vPrompt','hair blowing in wind')">发丝飘</div>
-        <div class="pill" onclick="ap('i2vPrompt','eyes blinking slowly')">慢眨眼</div>
-        <div class="pill" onclick="ap('i2vPrompt','floating petals')">花瓣落</div>
-      </div>
+
+    <div><div class="fl">📷 镜头运动</div>
+      <select id="i2vCamera">
+        <option value="">不指定</option>
+        <option value="slow zoom in, camera pushes forward smoothly">缓慢推进（zoom in）</option>
+        <option value="slow zoom out, camera pulls back revealing scene">缓慢拉远（zoom out）</option>
+        <option value="gentle camera pan left to right">横向平移（左→右）</option>
+        <option value="gentle camera pan right to left">横向平移（右→左）</option>
+        <option value="low angle upward tilt shot">仰拍向上</option>
+        <option value="overhead drone shot descending slowly">航拍下降</option>
+        <option value="360 degree orbit rotation around subject">环绕旋转</option>
+        <option value="dramatic Dutch angle tilt">斜角构图</option>
+        <option value="whip pan fast camera swing">快速甩镜</option>
+        <option value="static locked camera, no movement">固定镜头</option>
+      </select>
     </div>
-    <div><div class="fl">时长</div><select id="i2vDur"><option value="3">3秒</option><option value="6" selected>6秒</option></select></div>
+
+    <div><div class="fl">🎭 主体动作</div>
+      <select id="i2vAction">
+        <option value="">不指定</option>
+        <option value="hair gently blowing in slow motion wind">发丝慢动作飘动</option>
+        <option value="eyes blinking slowly, subtle smile">慢眨眼，微笑</option>
+        <option value="subject turns head slowly toward camera">人物缓慢转头看镜头</option>
+        <option value="lips moving naturally speaking">嘴唇自然说话动作</option>
+        <option value="car drifting with smoke and sparks">汽车漂移带烟雾火花</option>
+        <option value="car accelerating with speed blur">汽车加速运动模糊</option>
+        <option value="water splashing in slow motion">水花慢动作飞溅</option>
+        <option value="logo rising from surface with glow">Logo从画面升起发光</option>
+        <option value="flower petals falling gently">花瓣轻轻飘落</option>
+        <option value="smoke or fog drifting slowly">烟雾缓慢飘散</option>
+        <option value="light rays god rays breaking through">光线丁达尔效果</option>
+        <option value="ocean waves crashing dramatically">海浪强烈拍打</option>
+      </select>
+    </div>
+
+    <div><div class="fl">🌈 光线氛围</div>
+      <select id="i2vMood">
+        <option value="">不指定</option>
+        <option value="golden hour warm cinematic lighting, lens flare">黄金时刻暖光</option>
+        <option value="blue hour twilight cool dramatic lighting">蓝调黄昏</option>
+        <option value="sunrise god rays breaking through clouds">日出神光</option>
+        <option value="neon city night lights bokeh background">霓虹夜景</option>
+        <option value="overcast soft diffused natural light">阴天柔光</option>
+        <option value="dramatic high contrast chiaroscuro lighting">戏剧高对比光影</option>
+        <option value="underwater caustic light ripples">水下光线波纹</option>
+        <option value="studio professional beauty lighting">专业美妆棚拍光</option>
+      </select>
+    </div>
+
+    <div><div class="fl">⚡ 节奏速度</div>
+      <select id="i2vSpeed">
+        <option value="">不指定</option>
+        <option value="ultra slow motion, dreamy fluid movement">超慢动作，梦幻流畅</option>
+        <option value="slow motion cinematic pacing">慢动作电影节奏</option>
+        <option value="normal natural pacing">正常节奏</option>
+        <option value="fast energetic dynamic movement">快节奏动感</option>
+        <option value="time-lapse rapid motion">延时快进</option>
+      </select>
+    </div>
+
+    <div><div class="fl">✏️ 补充描述（选填）</div>
+      <textarea id="i2vExtra" rows="2" placeholder="其他额外描述，如品牌名称、特殊效果..."></textarea>
+    </div>
+
+    <div><div class="fl">📋 完整提示词预览</div>
+      <textarea id="i2vPrompt" rows="3" placeholder="选择上方选项后自动生成，也可手动修改..." readonly style="background:var(--bg);color:var(--t2);cursor:text" onclick="this.removeAttribute('readonly')"></textarea>
+      <button class="btn btn-ghost" style="margin-top:6px;font-size:11px" onclick="buildI2VPrompt()">🔄 重新生成提示词</button>
+    </div>
+
+    <div class="tip tip-info">💡 选项越详细，视频效果越精准 · MiniMax · 约2~5分钟</div>
     <button class="btn btn-ac" id="i2vBtn" onclick="genI2V()">🎬 图片生视频</button>
   </div>
   <div class="sec" id="video-ms">
@@ -810,6 +870,30 @@ async function genI2I(){
   finally{setBtn('i2iBtn',false,'✦ 图生图')}
 }
 
+// ===== 图生视频提示词构建 =====
+function buildI2VPrompt() {
+  const camera = $('i2vCamera')?.value || '';
+  const action = $('i2vAction')?.value || '';
+  const mood = $('i2vMood')?.value || '';
+  const speed = $('i2vSpeed')?.value || '';
+  const extra = $('i2vExtra')?.value.trim() || '';
+  const parts = [camera, action, mood, speed, extra].filter(Boolean);
+  if (parts.length === 0) {
+    $('i2vPrompt').value = 'smooth cinematic motion, professional video quality';
+  } else {
+    $('i2vPrompt').value = parts.join(', ') + ', cinematic professional quality, 8K';
+  }
+  $('i2vPrompt').removeAttribute('readonly');
+}
+
+// 监听下拉改变自动生成
+document.addEventListener('DOMContentLoaded', () => {
+  ['i2vCamera','i2vAction','i2vMood','i2vSpeed'].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener('change', buildI2VPrompt);
+  });
+});
+
 // ===== 视频生成 =====
 async function genT2V(){
   const prompt=$('vidPrompt').value.trim();
@@ -833,7 +917,9 @@ async function genT2V(){
 async function genI2V(){
   if(!UPS.i2v){showErr('请上传图片');return}
   setBtn('i2vBtn',true,'⟳ 生成中...');
-  const prompt=$('i2vPrompt').value.trim()||'smooth cinematic motion';
+  // 如果没有手动建立提示词，自动构建
+  if (!$('i2vPrompt').value.trim()) buildI2VPrompt();
+  const prompt=$('i2vPrompt').value.trim()||'smooth cinematic motion, professional quality';
   startLoad('图片生视频中...','MiniMax · 约2~5分钟',['上传','分析','生成','完成']);
   const t0=Date.now();
   const iv=setInterval(()=>{setStep(Math.min(2,Math.floor((Date.now()-t0)/60000)),4)},15000);
