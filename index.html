@@ -188,6 +188,21 @@ main{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
 .ap-info{flex:1}
 .ap-name{font-size:11px;color:var(--t2)}
 .ap-dur{font-size:10px;color:var(--t3)}
+/* 场景卡片 */
+.scene-card{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);overflow:hidden}
+.scene-header{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s1);border-bottom:1px solid var(--b1);cursor:pointer}
+.scene-num{width:24px;height:24px;background:var(--ac);color:#080808;border-radius:6px;font-size:11px;font-weight:700;display:grid;place-items:center;flex-shrink:0}
+.scene-title{flex:1;font-size:12px;font-weight:600;color:var(--t2)}
+.scene-type-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
+.badge-lipsync{background:rgba(192,132,252,.2);color:var(--purple)}
+.badge-video{background:rgba(74,158,255,.2);color:var(--blue)}
+.scene-rm{background:rgba(255,74,74,.1);border:1px solid rgba(255,74,74,.25);border-radius:6px;color:var(--red);font-size:11px;padding:3px 8px;cursor:pointer}
+.scene-body{padding:12px;display:flex;flex-direction:column;gap:10px}
+.scene-status{font-size:11px;padding:6px 10px;border-radius:6px;text-align:center}
+.ss-pending{background:var(--s3);color:var(--t3)}
+.ss-processing{background:rgba(232,255,74,.1);color:var(--ac)}
+.ss-done{background:rgba(74,255,136,.1);color:var(--green)}
+.ss-error{background:rgba(255,74,74,.1);color:var(--red)}
 </style>
 </head>
 <body>
@@ -200,6 +215,7 @@ main{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
     <button class="nb" onclick="goTo('video',this)">🎬 视频</button>
     <button class="nb" onclick="goTo('talk',this)">🗣 说话视频</button>
     <button class="nb" onclick="goTo('edit',this)">✂️ 剪辑混音</button>
+    <button class="nb" onclick="goTo('scene',this)">🎭 多场景</button>
     <button class="nb" onclick="goTo('tools',this)">🔧 工具</button>
   </nav>
   <div class="hstats">
@@ -567,6 +583,39 @@ main{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
   </div>
 </div>
 
+<!-- ===== 多场景面板 ===== -->
+<div class="panel" id="panel-scene">
+  <div class="tip tip-purple">🎭 上传多张图片，每张设置独立动效和口播，自动合成一个完整视频</div>
+
+  <div>
+    <div class="fl">场景列表（最多6个场景）</div>
+    <div id="sceneList" style="display:flex;flex-direction:column;gap:10px"></div>
+    <button class="btn btn-blue" style="margin-top:8px;font-size:12px" onclick="addScene()">＋ 添加场景</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <div>
+    <div class="fl">全局背景音乐（选填）</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleSceneBgMode('lib')">🎵 音乐库</button>
+      <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleSceneBgMode('upload')">📁 上传</button>
+      <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleSceneBgMode('none')">❌ 不要</button>
+    </div>
+    <div id="sceneBgLib"><div class="music-lib" id="sceneMusicLib"></div></div>
+    <div id="sceneBgUpload" style="display:none"><div class="uz" id="sceneBgZone"><input type="file" accept="audio/*" onchange="upAudio(this,'sceneBg')"/><div class="uz-icon">🎵</div><div class="uz-txt">上传背景音乐</div></div></div>
+  </div>
+
+  <div>
+    <div class="fl">背景音乐音量</div>
+    <div class="slrow"><input type="range" min="0" max="1" step="0.05" value="0.3" id="sceneBgVol" oninput="$('sceneBgVolV').textContent=Math.round(this.value*100)+'%'"/><span class="slval" id="sceneBgVolV">30%</span></div>
+  </div>
+
+  <div class="tip tip-info" id="sceneEstimate">💡 添加场景后显示预计时长和费用</div>
+
+  <button class="btn btn-ac" id="sceneBtn" onclick="generateSceneVideo()">🎬 一键生成多场景视频</button>
+</div>
+
 <!-- ===== 工具面板 ===== -->
 <div class="panel" id="panel-tools">
   <div class="subnav">
@@ -777,6 +826,7 @@ function upAudio(input,key){
     else if(key==='beatNar'){narAudioUrl=url;}
     else if(key==='concatNar'){concatNarAudioUrl=url;}
     else if(key==='concatBg'){concatBgAudioB64=e.target.result;concatBgAudioUrl=url;}
+    else if(key==='sceneBg'){sceneBgAudioB64=e.target.result;sceneBgAudioUrl=url;}
   };
   rd.readAsDataURL(file);
   // 显示预览
@@ -1463,11 +1513,307 @@ async function concatVideos() {
   finally { setBtn('concatBtn', false, '🔗 拼接合并视频'); }
 }
 
+// ===== 多场景视频 =====
+let scenes = [];
+let sceneBgAudioUrl = '';
+let sceneBgAudioB64 = '';
+let sceneSelectedMusic = null;
+
+const SCENE_MOTIONS = [
+  {label:'缓慢推进', val:'slow zoom in smoothly, cinematic motion'},
+  {label:'缓慢拉远', val:'slow zoom out, revealing scene'},
+  {label:'横向平移', val:'gentle camera pan left to right'},
+  {label:'仰拍向上', val:'low angle upward tilt shot'},
+  {label:'环绕旋转', val:'360 orbit rotation around subject'},
+  {label:'航拍下降', val:'overhead drone shot descending'},
+  {label:'快速甩镜', val:'whip pan dynamic camera swing'},
+  {label:'固定镜头', val:'static locked camera, subtle depth'},
+  {label:'发丝飘动', val:'hair blowing in slow motion wind'},
+  {label:'汽车漂移', val:'car drifting with smoke and sparks, speed blur'},
+  {label:'水花飞溅', val:'water splashing in slow motion'},
+  {label:'Logo升起', val:'logo rising from surface with golden glow'},
+  {label:'光线神光', val:'god rays breaking through clouds, lens flare'},
+  {label:'海浪拍打', val:'ocean waves crashing dramatically'},
+  {label:'花瓣飘落', val:'flower petals falling gently, bokeh'},
+];
+
+function addScene() {
+  if (scenes.length >= 6) { alert('最多6个场景'); return; }
+  const id = Date.now();
+  scenes.push({ id, img: '', type: 'video', motion: '', tts: '', lang: 'zh', audioUrl: '', videoB64: '', status: 'pending' });
+  renderSceneList();
+  renderSceneEstimate();
+}
+
+function removeScene(id) {
+  scenes = scenes.filter(s => s.id !== id);
+  renderSceneList();
+  renderSceneEstimate();
+}
+
+function renderSceneList() {
+  const el = $('sceneList');
+  if (!el) return;
+  if (scenes.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px">点击"添加场景"开始</div>';
+    return;
+  }
+  el.innerHTML = scenes.map((s, i) => `
+    <div class="scene-card" id="sc_${s.id}">
+      <div class="scene-header">
+        <div class="scene-num">${i+1}</div>
+        <div class="scene-title">场景 ${i+1}</div>
+        <span class="scene-type-badge ${s.type==='lipsync'?'badge-lipsync':'badge-video'}">${s.type==='lipsync'?'🗣 口播':'🎬 视频'}</span>
+        <button class="scene-rm" onclick="removeScene(${s.id})">删除</button>
+      </div>
+      <div class="scene-body">
+        <!-- 图片上传 -->
+        <div>
+          <div class="fl">上传图片</div>
+          <div class="uz" style="min-height:60px" onclick="document.getElementById('scImg_${s.id}').click()">
+            <input type="file" id="scImg_${s.id}" accept="image/*" style="display:none" onchange="sceneUploadImg(this,${s.id})"/>
+            ${s.img ? `<img src="${s.img}" style="max-height:80px;border-radius:6px;display:block;margin:0 auto">` : '<div class="uz-icon">🖼</div><div class="uz-txt">点击上传图片</div>'}
+          </div>
+        </div>
+        <!-- 场景类型 -->
+        <div>
+          <div class="fl">场景类型</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn ${s.type==='video'?'btn-blue':'btn-ghost'}" style="flex:1;font-size:11px;padding:8px" onclick="sceneSetType(${s.id},'video')">🎬 动效视频</button>
+            <button class="btn ${s.type==='lipsync'?'btn-purple':'btn-ghost'}" style="flex:1;font-size:11px;padding:8px" onclick="sceneSetType(${s.id},'lipsync')">🗣 口播对口型</button>
+          </div>
+        </div>
+        <!-- 动效视频设置 -->
+        ${s.type==='video' ? `
+        <div>
+          <div class="fl">运动效果</div>
+          <select onchange="sceneSetMotion(${s.id},this.value)" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-size:12px;padding:8px;outline:none">
+            <option value="">自动选择</option>
+            ${SCENE_MOTIONS.map(m=>`<option value="${m.val}" ${s.motion===m.val?'selected':''}>${m.label}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <div class="fl">补充描述（选填）</div>
+          <textarea rows="2" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-size:12px;padding:8px;outline:none;resize:none;font-family:inherit" placeholder="如：MORODOK gold logo, sunset, dramatic..." onchange="sceneSetExtra(${s.id},this.value)">${s.extra||''}</textarea>
+        </div>` : ''}
+        <!-- 口播设置 -->
+        ${s.type==='lipsync' ? `
+        <div>
+          <div class="fl">口播台词</div>
+          <textarea rows="3" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-size:12px;padding:8px;outline:none;resize:none;font-family:inherit" placeholder="输入人物说的话..." onchange="sceneSetTTS(${s.id},this.value)">${s.tts||''}</textarea>
+        </div>
+        <div class="g2">
+          <div><div class="fl">语言</div>
+            <select onchange="sceneSetLang(${s.id},this.value)" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-size:12px;padding:8px;outline:none">
+              <option value="zh" ${s.lang==='zh'?'selected':''}>🇨🇳 中文</option>
+              <option value="en" ${s.lang==='en'?'selected':''}>🇺🇸 英文</option>
+              <option value="km" ${s.lang==='km'?'selected':''}>🇰🇭 高棉语</option>
+            </select>
+          </div>
+          <div><div class="fl">声音</div>
+            <select onchange="sceneSetVoice(${s.id},this.value)" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-size:12px;padding:8px;outline:none">
+              <option value="female">女声</option>
+              <option value="male">男声</option>
+            </select>
+          </div>
+        </div>` : ''}
+        <!-- 状态 -->
+        <div class="scene-status ${s.status==='done'?'ss-done':s.status==='processing'?'ss-processing':s.status==='error'?'ss-error':'ss-pending'}" id="scStatus_${s.id}">
+          ${s.status==='done'?'✅ 已生成':s.status==='processing'?'⟳ 生成中...':s.status==='error'?'❌ 生成失败':'⏳ 等待生成'}
+        </div>
+        ${s.videoB64 ? `<video src="${s.videoB64}" controls loop muted style="width:100%;border-radius:8px;max-height:120px"></video>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function sceneUploadImg(input, id) {
+  const file = input.files[0]; if (!file) return;
+  const rd = new FileReader();
+  rd.onload = e => {
+    const s = scenes.find(s => s.id === id);
+    if (s) { s.img = e.target.result; renderSceneList(); }
+  };
+  rd.readAsDataURL(file);
+}
+
+function sceneSetType(id, type) {
+  const s = scenes.find(s => s.id === id);
+  if (s) { s.type = type; renderSceneList(); }
+}
+
+function sceneSetMotion(id, val) {
+  const s = scenes.find(s => s.id === id);
+  if (s) s.motion = val;
+}
+
+function sceneSetExtra(id, val) {
+  const s = scenes.find(s => s.id === id);
+  if (s) s.extra = val;
+}
+
+function sceneSetTTS(id, val) {
+  const s = scenes.find(s => s.id === id);
+  if (s) s.tts = val;
+}
+
+function sceneSetLang(id, val) {
+  const s = scenes.find(s => s.id === id);
+  if (s) s.lang = val;
+}
+
+function sceneSetVoice(id, val) {
+  const s = scenes.find(s => s.id === id);
+  if (s) s.voice = val;
+}
+
+function renderSceneEstimate() {
+  const el = $('sceneEstimate');
+  if (!el) return;
+  const n = scenes.length;
+  if (n === 0) { el.textContent = '💡 添加场景后显示预计时长和费用'; return; }
+  const hasLipsync = scenes.some(s => s.type === 'lipsync');
+  const cost = n * 0.08 + (hasLipsync ? n * 0.06 : 0);
+  el.textContent = `💡 ${n} 个场景 · 预计总时长 ${n*6} 秒 · 预计费用约 $${cost.toFixed(2)} · 约 ${n*3}~${n*5} 分钟`;
+}
+
+function toggleSceneBgMode(mode) {
+  $('sceneBgLib').style.display = mode === 'lib' ? 'block' : 'none';
+  $('sceneBgUpload').style.display = mode === 'upload' ? 'block' : 'none';
+  if (mode === 'lib') renderSceneMusicLib();
+  if (mode === 'none') { sceneBgAudioUrl = ''; sceneBgAudioB64 = ''; sceneSelectedMusic = null; }
+}
+
+function renderSceneMusicLib() {
+  const el = $('sceneMusicLib');
+  if (!el) return;
+  el.innerHTML = MUSIC_LIB.map(m => `
+    <div class="music-card" id="smc_${m.id}" onclick="selectSceneMusic('${m.id}','${m.url}')">
+      <span class="mc-icon">${m.icon}</span>
+      <div class="mc-info"><div class="mc-name">${m.name}</div><div class="mc-genre">${m.genre}</div></div>
+    </div>`).join('');
+}
+
+function selectSceneMusic(id, url) {
+  document.querySelectorAll('[id^=smc_]').forEach(c => c.classList.remove('selected'));
+  const el = document.getElementById('smc_' + id);
+  if (el) el.classList.add('selected');
+  sceneBgAudioUrl = url;
+  sceneSelectedMusic = { id, url };
+}
+
+function setSceneStatus(id, status, msg) {
+  const s = scenes.find(s => s.id === id);
+  if (s) s.status = status;
+  const el = $('scStatus_' + id);
+  if (el) {
+    el.className = `scene-status ${status==='done'?'ss-done':status==='processing'?'ss-processing':status==='error'?'ss-error':'ss-pending'}`;
+    el.textContent = msg || (status==='done'?'✅ 已生成':status==='processing'?'⟳ 生成中...':status==='error'?'❌ 生成失败':'⏳ 等待生成');
+  }
+}
+
+async function generateSceneVideo() {
+  if (scenes.length === 0) { showErr('请先添加场景'); return; }
+  for (const s of scenes) {
+    if (!s.img) { showErr(`场景 ${scenes.indexOf(s)+1} 未上传图片`); return; }
+    if (s.type === 'lipsync' && !s.tts) { showErr(`场景 ${scenes.indexOf(s)+1} 未输入口播台词`); return; }
+  }
+  setBtn('sceneBtn', true, '⟳ 生成中...');
+  startLoad('多场景视频生成中...', `共 ${scenes.length} 个场景，请耐心等待`, scenes.map((s,i) => `场景${i+1}: ${s.type==='lipsync'?'口播视频':'动效视频'}`));
+  const t0 = Date.now();
+  const videoB64s = [];
+  try {
+    for (let i = 0; i < scenes.length; i++) {
+      const s = scenes[i];
+      setStep(i, scenes.length);
+      $('lTitle').textContent = `生成场景 ${i+1}/${scenes.length}...`;
+      setSceneStatus(s.id, 'processing', `⟳ 生成中...`);
+      try {
+        if (s.type === 'lipsync') {
+          // 口播：TTS + 口型同步
+          const voice = s.voice === 'male' ? 'https://replicate.delivery/pbxt/Jt79w0xsT64R1JsiJ0HERH6UMNOUEf5nqVmE66YqNZ8CDLC/male.wav' : '';
+          const ttsR = await fetch('/api/tts', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: s.tts, language: s.lang, voice }) });
+          const ttsD = await ttsR.json();
+          if (!ttsR.ok) throw new Error(ttsD.detail);
+          const audioUrl = ttsD.audio_url;
+          // 口型同步
+          const lipR = await fetch('/api/talking-video', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ image: s.img, text: s.tts, language: s.lang, voice }) });
+          const lipD = await lipR.json();
+          if (!lipR.ok) throw new Error(lipD.detail);
+          const vidB64 = lipD.output[0];
+          s.videoB64 = vidB64;
+          videoB64s.push(vidB64);
+          setSceneStatus(s.id, 'done', '✅ 口播视频已生成');
+        } else {
+          // 动效视频：图生视频
+          const motion = s.motion || 'smooth cinematic motion, professional quality';
+          const extra = s.extra || '';
+          const prompt = [motion, extra].filter(Boolean).join(', ') + ', 8K cinematic';
+          const vidR = await fetch('/api/img2video', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ image: s.img, prompt, duration: 6 }) });
+          const vidD = await vidR.json();
+          if (!vidR.ok) throw new Error(vidD.detail);
+          const vidB64 = vidD.output[0];
+          s.videoB64 = vidB64;
+          videoB64s.push(vidB64);
+          setSceneStatus(s.id, 'done', '✅ 动效视频已生成');
+        }
+        renderSceneList();
+      } catch(e) {
+        setSceneStatus(s.id, 'error', '❌ ' + e.message);
+      }
+    }
+
+    // 所有场景生成完，拼接
+    const validVids = videoB64s.filter(Boolean);
+    if (validVids.length === 0) throw new Error('所有场景均生成失败');
+    $('lTitle').textContent = '拼接合并中...';
+    $('lSub').textContent = `${validVids.length} 段视频 + 背景音乐`;
+
+    const bgUrl = sceneSelectedMusic?.url || sceneBgAudioUrl || null;
+    const payload = {
+      videos_b64: validVids,
+      music_url: bgUrl,
+      music_b64: sceneBgAudioB64 || null,
+      music_volume: parseFloat($('sceneBgVol').value),
+      narration_url: null,
+      narration_volume: 1.0,
+      original_volume: 1.0  // 保留口播声音
+    };
+
+    const concatR = await fetch('/api/concat-videos', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    stopLoad();
+    const concatD = await concatR.json();
+    if (!concatR.ok) throw new Error(concatD.detail);
+
+    const elapsed = ((Date.now()-t0)/1000).toFixed(1);
+    showSt('result');
+    $('resultContent').innerHTML = `
+      <div class="vplayer">
+        <video src="${concatD.output}" controls autoplay loop playsinline></video>
+        <div class="vinfo">
+          <span>🎭 多场景视频 · ${validVids.length} 场景合并</span>
+          <span>${elapsed}s</span>
+        </div>
+      </div>`;
+    $('resultBar').innerHTML = `
+      <button class="rbb primary" onclick="dlVideo('${concatD.output}',this)">⬇ 下载完整视频</button>
+      <button class="rbb" onclick="openModal('video','${concatD.output}')">🔍 全屏预览</button>`;
+    $('resultMeta').innerHTML = `${validVids.length} 场景 · ${validVids.length*6} 秒 · 耗时 <b>${elapsed}s</b>`;
+    saveHist([{type:'video', url: concatD.output}]);
+
+  } catch(e) { showErr('❌ ' + e.message); }
+  finally { setBtn('sceneBtn', false, '🎬 一键生成多场景视频'); }
+}
+
+// upAudio 支持 sceneBg
+
 // ===== 初始化 =====
 $('costBadge').textContent=`消耗 $${totalCost.toFixed(3)}`;
 renderMusicLib('musicLib');
 renderHist();
 sysCheck();
+renderSceneList();
+renderSceneMusicLib();
 </script>
 </body>
 </html>
