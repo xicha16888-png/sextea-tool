@@ -1,435 +1,1473 @@
-const express = require('express');
-const Replicate = require('replicate');
-const FormData = require('form-data');
-const fetch = require('node-fetch');
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 创作工具 PRO</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#080808;--s1:#111;--s2:#1a1a1a;--s3:#222;--s4:#2a2a2a;--b1:rgba(255,255,255,0.06);--b2:rgba(255,255,255,0.11);--b3:rgba(255,255,255,0.2);--t1:#f0f0f0;--t2:#888;--t3:#555;--ac:#e8ff4a;--blue:#4a9eff;--green:#4aff88;--red:#ff4a4a;--orange:#ffaa4a;--purple:#c084fc;--r:10px}
+body{background:var(--bg);color:var(--t1);font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;height:100vh;display:grid;grid-template-columns:420px 1fr;grid-template-rows:52px 1fr;overflow:hidden}
+header{grid-column:1/-1;background:var(--s1);border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 16px;gap:10px}
+.logo{width:28px;height:28px;background:var(--ac);border-radius:8px;display:grid;place-items:center;font-size:14px;flex-shrink:0}
+.app-name{font-size:14px;font-weight:700}
+.nav{display:flex;gap:2px;margin-left:16px}
+.nb{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--t3);border:none;background:transparent;font-family:inherit;transition:all .15s}
+.nb.active{background:var(--s3);color:var(--t1)}
+.nb:hover:not(.active){color:var(--t2)}
+.hstats{margin-left:auto;display:flex;gap:8px;align-items:center}
+.badge{font-size:11px;color:var(--t3);padding:4px 10px;background:var(--s2);border-radius:20px;border:1px solid var(--b1)}
+aside{background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-direction:column;overflow:hidden}
+.panel{flex:1;overflow-y:auto;padding:16px;display:none;flex-direction:column;gap:14px}
+.panel.show{display:flex}
+.panel::-webkit-scrollbar{width:3px}
+.panel::-webkit-scrollbar-thumb{background:var(--s3)}
+.subnav{display:flex;gap:3px;background:var(--bg);border-radius:var(--r);padding:3px;flex-shrink:0}
+.sb{flex:1;padding:7px 4px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;color:var(--t3);border:none;background:transparent;font-family:inherit;text-align:center;transition:all .15s}
+.sb.active{background:var(--s2);color:var(--t1)}
+.sb:hover:not(.active){color:var(--t2)}
+.sec{display:none;flex-direction:column;gap:12px}
+.sec.show{display:flex}
+.fl{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:6px}
+textarea,input[type=text],input[type=number],input[type=url]{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-size:13px;padding:9px 12px;outline:none;font-family:inherit;transition:border-color .2s}
+textarea{resize:none;line-height:1.6}
+textarea:focus,input:focus{border-color:rgba(232,255,74,.4)}
+textarea::placeholder,input::placeholder{color:var(--t3)}
+select{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-size:13px;padding:9px 12px;outline:none;cursor:pointer;appearance:none;font-family:inherit}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.btn{width:100%;border:none;border-radius:var(--r);padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-ac{background:var(--ac);color:#080808}
+.btn-ac:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-ac:disabled{background:var(--s3);color:var(--t3);cursor:not-allowed;transform:none;filter:none}
+.btn-ghost{background:transparent;border:1px solid var(--b2);color:var(--t2)}
+.btn-ghost:hover{color:var(--t1)}
+.btn-blue{background:rgba(74,158,255,.12);border:1px solid rgba(74,158,255,.3);color:var(--blue)}
+.btn-green{background:rgba(74,255,136,.1);border:1px solid rgba(74,255,136,.3);color:var(--green)}
+.btn-orange{background:rgba(255,170,74,.1);border:1px solid rgba(255,170,74,.3);color:var(--orange)}
+.btn-purple{background:rgba(192,132,252,.1);border:1px solid rgba(192,132,252,.3);color:var(--purple)}
+.btn-red{background:rgba(255,74,74,.1);border:1px solid rgba(255,74,74,.3);color:var(--red)}
+.uz{border:1.5px dashed var(--b2);border-radius:var(--r);padding:14px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--s2);min-height:70px}
+.uz:hover{border-color:var(--ac);background:rgba(232,255,74,.04)}
+.uz input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.uz-icon{font-size:22px;margin-bottom:4px;opacity:.35}
+.uz-txt{font-size:11px;color:var(--t3);line-height:1.5}
+.up-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.up-item{position:relative}
+.up-item img,.up-item video{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--b2);display:block}
+.up-rm{position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:var(--red);border-radius:50%;border:none;color:#fff;font-size:10px;cursor:pointer;display:grid;place-items:center}
+.pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.pill{background:var(--s3);border:1px solid var(--b1);border-radius:20px;padding:3px 9px;font-size:10px;color:var(--t3);cursor:pointer;transition:all .15s;white-space:nowrap}
+.pill:hover{color:var(--t1);border-color:var(--ac)}
+.slrow{display:flex;align-items:center;gap:8px}
+.slrow input[type=range]{flex:1;accent-color:var(--ac)}
+.sllbl{font-size:10px;color:var(--t3);white-space:nowrap}
+.slval{font-size:11px;color:var(--t2);min-width:30px;text-align:right}
+.tip{border-radius:8px;padding:9px 12px;font-size:11px;line-height:1.7}
+.tip-info{background:rgba(74,158,255,.06);border:1px solid rgba(74,158,255,.15);color:#8bc4ff}
+.tip-warn{background:rgba(255,170,74,.06);border:1px solid rgba(255,170,74,.15);color:#ffc87a}
+.tip-green{background:rgba(74,255,136,.06);border:1px solid rgba(74,255,136,.15);color:#7affa0}
+.tip-purple{background:rgba(192,132,252,.06);border:1px solid rgba(192,132,252,.15);color:#d8b4fe}
+.divider{height:1px;background:var(--b1);margin:2px 0}
+/* 音量控制 */
+.vol-group{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px}
+.vol-row{display:flex;align-items:center;gap:10px}
+.vol-label{font-size:11px;color:var(--t2);width:72px;flex-shrink:0}
+.vol-slider{flex:1;accent-color:var(--ac)}
+.vol-val{font-size:11px;color:var(--t3);width:36px;text-align:right}
+/* 音乐库 */
+.music-lib{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:200px;overflow-y:auto}
+.music-lib::-webkit-scrollbar{width:3px}
+.music-lib::-webkit-scrollbar-thumb{background:var(--s3)}
+.music-card{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px 10px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px}
+.music-card:hover,.music-card.selected{border-color:var(--ac);background:rgba(232,255,74,.05)}
+.music-card.selected .mc-icon{color:var(--ac)}
+.mc-icon{font-size:16px;flex-shrink:0}
+.mc-info{flex:1;min-width:0}
+.mc-name{font-size:11px;font-weight:600;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-genre{font-size:9px;color:var(--t3)}
+/* 波形显示 */
+.waveform{width:100%;height:60px;background:var(--bg);border-radius:8px;border:1px solid var(--b1);position:relative;overflow:hidden;cursor:pointer}
+.wave-canvas{width:100%;height:100%}
+.beat-marker{position:absolute;top:0;bottom:0;width:2px;background:rgba(232,255,74,.5);pointer-events:none}
+.playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--ac);pointer-events:none;transition:left .1s}
+/* 时间轴 */
+.timeline{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;width:100%}
+.tl-header{display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid var(--b1);gap:8px}
+.tl-title{font-size:11px;font-weight:600;color:var(--t2)}
+.tl-body{padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.tl-track{display:flex;align-items:center;gap:8px}
+.tl-lbl{font-size:9px;color:var(--t3);width:36px;text-align:right;flex-shrink:0}
+.tl-lane{flex:1;height:28px;background:var(--bg);border-radius:5px;position:relative;overflow:hidden;border:1px solid var(--b1)}
+.tl-clip{position:absolute;top:2px;bottom:2px;border-radius:4px;font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;transition:filter .15s}
+.tl-clip:hover{filter:brightness(1.3)}
+.tc-vid{background:rgba(74,158,255,.3);border:1px solid rgba(74,158,255,.5);color:var(--blue)}
+.tc-nar{background:rgba(232,255,74,.25);border:1px solid rgba(232,255,74,.4);color:#c8e800}
+.tc-bg{background:rgba(74,255,136,.2);border:1px solid rgba(74,255,136,.4);color:var(--green)}
+/* 主区域 */
+main{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.canvas{flex:1;display:flex;align-items:center;justify-content:center;padding:28px;overflow-y:auto}
+.empty{text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px}
+.empty-icon{font-size:48px;opacity:.1}
+.empty-title{font-size:18px;font-weight:500;color:var(--t3)}
+.empty-sub{font-size:12px;color:var(--t3);line-height:1.8;max-width:360px}
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;max-width:340px}
+.qcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:10px 12px;cursor:pointer;transition:all .15s;text-align:left}
+.qcard:hover{border-color:var(--b3);background:var(--s2)}
+.qc-icon{font-size:18px;margin-bottom:4px}
+.qc-title{font-size:12px;font-weight:600;color:var(--t2)}
+.qc-sub{font-size:10px;color:var(--t3);margin-top:2px}
+.loading{display:none;flex-direction:column;align-items:center;gap:18px;text-align:center;max-width:360px;width:100%}
+.lring{width:52px;height:52px;border:2px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ltitle{font-size:15px;color:var(--t2);font-weight:500}
+.ltimer{font-size:24px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums}
+.lprog{width:100%;height:3px;background:var(--s3);border-radius:2px;overflow:hidden}
+.lprogfill{height:100%;background:var(--ac);border-radius:2px;transition:width .8s ease}
+.lsub{font-size:12px;color:var(--t3);line-height:1.7}
+.lsteps{width:100%;display:flex;flex-direction:column;gap:4px}
+.lstep{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--t3);padding:5px 10px;border-radius:6px}
+.lstep.active{color:var(--t1);background:var(--s2)}
+.lstep.done{color:var(--green)}
+.lstep::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.result{display:none;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:900px}
+.igrid{display:grid;gap:10px;width:100%}
+.igrid.c1{grid-template-columns:1fr;max-width:480px;margin:0 auto}
+.igrid.c2,.igrid.c4{grid-template-columns:1fr 1fr}
+.icard{position:relative;border-radius:var(--r);overflow:hidden;background:var(--s1);cursor:pointer}
+.icard img{width:100%;display:block}
+.iov{position:absolute;inset:0;background:linear-gradient(transparent 40%,rgba(0,0,0,.85));opacity:0;transition:opacity .2s;display:flex;align-items:flex-end;padding:10px;gap:6px}
+.icard:hover .iov{opacity:1}
+.ovb{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#fff;font-size:11px;padding:5px 10px;cursor:pointer;text-decoration:none;font-family:inherit;white-space:nowrap}
+.ovb:hover{background:rgba(255,255,255,.22)}
+.vplayer{width:100%;border-radius:12px;overflow:hidden;background:#000;border:1px solid var(--b2)}
+.vplayer video{width:100%;display:block;max-height:58vh}
+.vinfo{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--s1);font-size:11px;color:var(--t2)}
+.multivid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;width:100%}
+.vcard{border-radius:var(--r);overflow:hidden;background:var(--s1);border:1px solid var(--b1)}
+.vcard video{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.vcbar{display:flex;align-items:center;justify-content:space-between;padding:7px 10px}
+.rbar{display:flex;gap:8px;width:100%;max-width:900px}
+.rbb{flex:1;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t2);padding:9px;font-size:12px;cursor:pointer;text-align:center;text-decoration:none;display:block;font-family:inherit;transition:all .15s}
+.rbb:hover{color:var(--t1)}
+.rbb.primary{background:var(--ac);color:#080808;border-color:var(--ac);font-weight:700}
+.rmeta{font-size:11px;color:var(--t3)}
+.rmeta b{color:var(--t2)}
+.errbox{display:none;background:rgba(255,74,74,.06);border:1px solid rgba(255,74,74,.18);border-radius:var(--r);padding:14px;font-size:12px;color:#f88;text-align:center;max-width:420px;line-height:1.7}
+.abox{width:100%;max-width:600px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:16px}
+.atext{font-size:12px;color:var(--t2);line-height:1.9;white-space:pre-wrap}
+.aactions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.ab{background:var(--s2);border:1px solid var(--b2);border-radius:7px;color:var(--t2);padding:7px 14px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s}
+.ab:hover{color:var(--t1)}
+.ab.ac{background:var(--ac);color:#080808;border-color:var(--ac);font-weight:700}
+/* 历史 */
+.histbar{background:var(--s1);border-top:1px solid var(--b1);padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;min-height:72px}
+.histlbl{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+.histscroll{flex:1;display:flex;gap:7px;overflow-x:auto;padding:2px 0}
+.histscroll::-webkit-scrollbar{height:2px}
+.histscroll::-webkit-scrollbar-thumb{background:var(--s3)}
+.himg{width:50px;height:50px;object-fit:cover;border-radius:6px;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:border-color .15s}
+.himg:hover{border-color:var(--ac)}
+.hvid{width:72px;height:46px;border-radius:6px;border:2px solid transparent;cursor:pointer;flex-shrink:0;background:#000;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.hvid video{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.hvid-play{position:absolute;color:rgba(255,255,255,.8);font-size:14px}
+.hvid:hover{border-color:var(--ac)}
+.hempty{font-size:11px;color:var(--t4,#222)}
+.hclear{font-size:10px;color:var(--t3);cursor:pointer;background:none;border:none;font-family:inherit}
+.hclear:hover{color:var(--red)}
+/* 预览 */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.modal.open{display:flex}
+.mclose{position:absolute;top:16px;right:16px;background:var(--s2);border:1px solid var(--b2);color:var(--t1);width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;display:grid;place-items:center}
+.mmedia{max-width:94vw;max-height:80vh;border-radius:12px}
+.mbar{display:flex;gap:10px}
+.mbtn{background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--t1);padding:8px 20px;font-size:12px;cursor:pointer;text-decoration:none;font-family:inherit}
+/* 音频预览 */
+.audio-preview{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px}
+.ap-icon{font-size:18px}
+.ap-info{flex:1}
+.ap-name{font-size:11px;color:var(--t2)}
+.ap-dur{font-size:10px;color:var(--t3)}
+</style>
+</head>
+<body>
 
-const app = express();
-app.use(express.json({ limit: '200mb' }));
-app.use(express.static(__dirname));
+<header>
+  <div class="logo">✦</div>
+  <div style="display:flex;flex-direction:column"><span class="app-name">AI 创作工具 PRO</span><span style="font-size:10px;color:var(--t3)">Powered by Replicate + FFmpeg</span></div>
+  <nav class="nav">
+    <button class="nb active" onclick="goTo('img',this)">🖼 图片</button>
+    <button class="nb" onclick="goTo('video',this)">🎬 视频</button>
+    <button class="nb" onclick="goTo('talk',this)">🗣 说话视频</button>
+    <button class="nb" onclick="goTo('edit',this)">✂️ 剪辑混音</button>
+    <button class="nb" onclick="goTo('tools',this)">🔧 工具</button>
+  </nav>
+  <div class="hstats">
+    <div class="badge" id="costBadge">消耗 $0.000</div>
+    <div class="badge" id="ffmpegBadge">FFmpeg ...</div>
+  </div>
+</header>
 
-const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-const TMP = '/tmp/aivideo';
-if (!fs.existsSync(TMP)) fs.mkdirSync(TMP, { recursive: true });
+<aside>
 
-// ===== 工具函数 =====
+<!-- ===== 图片面板 ===== -->
+<div class="panel show" id="panel-img">
+  <div class="subnav">
+    <button class="sb active" onclick="sub('img','t2i',this)">文字生图</button>
+    <button class="sb" onclick="sub('img','i2i',this)">图生图</button>
+  </div>
+  <div class="sec show" id="img-t2i">
+    <div><div class="fl">描述</div><textarea id="imgPrompt" rows="4" placeholder="A beautiful woman, cinematic lighting, 8k..."></textarea>
+      <div class="pills">
+        <div class="pill" onclick="ap('imgPrompt','cinematic lighting')">电影光</div>
+        <div class="pill" onclick="ap('imgPrompt','8k ultra detail')">8K</div>
+        <div class="pill" onclick="ap('imgPrompt','bokeh background')">背景虚化</div>
+        <div class="pill" onclick="ap('imgPrompt','logo design flat vector')">Logo</div>
+        <div class="pill" onclick="ap('imgPrompt','line art black on red')">线描红底</div>
+        <div class="pill" onclick="ap('imgPrompt','sexy silhouette elegant')">性感剪影</div>
+        <div class="pill" onclick="ap('imgPrompt','octagon frame brand')">八边形框</div>
+        <div class="pill" onclick="ap('imgPrompt','hyperrealistic portrait')">超写实</div>
+      </div>
+    </div>
+    <div><div class="fl">排除</div><textarea id="imgNeg" rows="2" placeholder="blur, low quality, watermark..."></textarea></div>
+    <div class="g2">
+      <div><div class="fl">比例</div><select id="imgRatio"><option value="1:1">正方形</option><option value="16:9">横版</option><option value="9:16" selected>竖版</option><option value="4:3">4:3</option><option value="3:4">3:4</option></select></div>
+      <div><div class="fl">数量</div><select id="imgCount"><option value="1" selected>1张</option><option value="2">2张</option><option value="4">4张</option></select></div>
+      <div><div class="fl">步数</div><select id="imgSteps"><option value="1">1步</option><option value="2">2步</option><option value="3">3步</option><option value="4" selected>4步</option></select></div>
+      <div><div class="fl">格式</div><select id="imgFmt"><option value="jpg" selected>JPG</option><option value="webp">WebP</option><option value="png">PNG</option></select></div>
+    </div>
+    <div><div class="fl">种子</div><div style="display:flex;gap:6px"><input type="number" id="imgSeed" placeholder="随机"/><button class="btn btn-ghost" style="width:auto;padding:0 12px" onclick="document.getElementById('imgSeed').value=Math.floor(Math.random()*2147483647)">⟳</button></div></div>
+    <button class="btn btn-ac" id="imgBtn" onclick="genImage()">✦ 生成图片</button>
+  </div>
+  <div class="sec" id="img-i2i">
+    <div><div class="fl">参考图片</div><div class="uz" id="i2iZone"><input type="file" accept="image/*" onchange="up1(this,'i2i')"/><div class="uz-icon">🖼</div><div class="uz-txt">上传参考图片</div><div class="up-grid" id="i2iPrev"></div></div></div>
+    <div><div class="fl">改成什么</div><textarea id="i2iPrompt" rows="3" placeholder="sexy Chinese beauty in qipao..."></textarea></div>
+    <div><div class="fl">参考强度</div><div class="slrow"><span class="sllbl">像原图</span><input type="range" min="0.1" max="1" step="0.05" value="0.75" id="i2iStr" oninput="$('i2iStrV').textContent=this.value"/><span class="sllbl">自由</span><span class="slval" id="i2iStrV">0.75</span></div></div>
+    <button class="btn btn-ac" id="i2iBtn" onclick="genI2I()">✦ 图生图</button>
+  </div>
+</div>
 
-function extractUrls(output) {
-  if (!output) return [];
-  const arr = Array.isArray(output) ? output : [output];
-  return arr.map(o => typeof o === 'string' ? o : (o.url ? o.url() : String(o)));
+<!-- ===== 视频面板 ===== -->
+<div class="panel" id="panel-video">
+  <div class="subnav">
+    <button class="sb active" onclick="sub('video','t2v',this)">文字→视频</button>
+    <button class="sb" onclick="sub('video','i2v',this)">图→视频</button>
+    <button class="sb" onclick="sub('video','ms',this)">多图→视频</button>
+  </div>
+  <div class="sec show" id="video-t2v">
+    <div><div class="fl">视频描述</div><textarea id="vidPrompt" rows="4" placeholder="A beautiful woman walking, golden hour, cinematic..."></textarea>
+      <div class="pills">
+        <div class="pill" onclick="ap('vidPrompt','cinematic slow motion')">慢动作</div>
+        <div class="pill" onclick="ap('vidPrompt','golden hour lighting')">黄金时刻</div>
+        <div class="pill" onclick="ap('vidPrompt','smooth camera zoom in')">推镜头</div>
+        <div class="pill" onclick="ap('vidPrompt','aerial drone shot')">航拍</div>
+        <div class="pill" onclick="ap('vidPrompt','fashion commercial professional')">时尚广告</div>
+        <div class="pill" onclick="ap('vidPrompt','neon city night rain')">霓虹夜雨</div>
+        <div class="pill" onclick="ap('vidPrompt','product 360 rotation shot')">产品旋转</div>
+        <div class="pill" onclick="ap('vidPrompt','hair flowing in wind bokeh')">发丝飘动</div>
+      </div>
+    </div>
+    <div class="g2">
+      <div><div class="fl">时长</div><select id="vidDur"><option value="3">3秒</option><option value="6" selected>6秒</option></select></div>
+      <div><div class="fl">比例</div><select id="vidRatio"><option value="16:9" selected>16:9</option><option value="9:16">9:16</option><option value="1:1">1:1</option></select></div>
+    </div>
+    <div class="tip tip-info">💡 MiniMax · $0.08/个 · 约2~5分钟</div>
+    <button class="btn btn-ac" id="t2vBtn" onclick="genT2V()">🎬 生成视频</button>
+  </div>
+  <div class="sec" id="video-i2v">
+    <div><div class="fl">起始图片</div><div class="uz" id="i2vZone"><input type="file" accept="image/*" onchange="up1(this,'i2v')"/><div class="uz-icon">🎬</div><div class="uz-txt">上传图片让它动起来</div><div class="up-grid" id="i2vPrev"></div></div></div>
+
+    <div><div class="fl">📷 镜头运动</div>
+      <select id="i2vCamera">
+        <option value="">不指定</option>
+        <option value="slow zoom in, camera pushes forward smoothly">缓慢推进（zoom in）</option>
+        <option value="slow zoom out, camera pulls back revealing scene">缓慢拉远（zoom out）</option>
+        <option value="gentle camera pan left to right">横向平移（左→右）</option>
+        <option value="gentle camera pan right to left">横向平移（右→左）</option>
+        <option value="low angle upward tilt shot">仰拍向上</option>
+        <option value="overhead drone shot descending slowly">航拍下降</option>
+        <option value="360 degree orbit rotation around subject">环绕旋转</option>
+        <option value="dramatic Dutch angle tilt">斜角构图</option>
+        <option value="whip pan fast camera swing">快速甩镜</option>
+        <option value="static locked camera, no movement">固定镜头</option>
+      </select>
+    </div>
+
+    <div><div class="fl">🎭 主体动作</div>
+      <select id="i2vAction">
+        <option value="">不指定</option>
+        <option value="hair gently blowing in slow motion wind">发丝慢动作飘动</option>
+        <option value="eyes blinking slowly, subtle smile">慢眨眼，微笑</option>
+        <option value="subject turns head slowly toward camera">人物缓慢转头看镜头</option>
+        <option value="lips moving naturally speaking">嘴唇自然说话动作</option>
+        <option value="car drifting with smoke and sparks">汽车漂移带烟雾火花</option>
+        <option value="car accelerating with speed blur">汽车加速运动模糊</option>
+        <option value="water splashing in slow motion">水花慢动作飞溅</option>
+        <option value="logo rising from surface with glow">Logo从画面升起发光</option>
+        <option value="flower petals falling gently">花瓣轻轻飘落</option>
+        <option value="smoke or fog drifting slowly">烟雾缓慢飘散</option>
+        <option value="light rays god rays breaking through">光线丁达尔效果</option>
+        <option value="ocean waves crashing dramatically">海浪强烈拍打</option>
+      </select>
+    </div>
+
+    <div><div class="fl">🌈 光线氛围</div>
+      <select id="i2vMood">
+        <option value="">不指定</option>
+        <option value="golden hour warm cinematic lighting, lens flare">黄金时刻暖光</option>
+        <option value="blue hour twilight cool dramatic lighting">蓝调黄昏</option>
+        <option value="sunrise god rays breaking through clouds">日出神光</option>
+        <option value="neon city night lights bokeh background">霓虹夜景</option>
+        <option value="overcast soft diffused natural light">阴天柔光</option>
+        <option value="dramatic high contrast chiaroscuro lighting">戏剧高对比光影</option>
+        <option value="underwater caustic light ripples">水下光线波纹</option>
+        <option value="studio professional beauty lighting">专业美妆棚拍光</option>
+      </select>
+    </div>
+
+    <div><div class="fl">⚡ 节奏速度</div>
+      <select id="i2vSpeed">
+        <option value="">不指定</option>
+        <option value="ultra slow motion, dreamy fluid movement">超慢动作，梦幻流畅</option>
+        <option value="slow motion cinematic pacing">慢动作电影节奏</option>
+        <option value="normal natural pacing">正常节奏</option>
+        <option value="fast energetic dynamic movement">快节奏动感</option>
+        <option value="time-lapse rapid motion">延时快进</option>
+      </select>
+    </div>
+
+    <div><div class="fl">✏️ 补充描述（选填）</div>
+      <textarea id="i2vExtra" rows="2" placeholder="其他额外描述，如品牌名称、特殊效果..."></textarea>
+    </div>
+
+    <div><div class="fl">📋 完整提示词预览</div>
+      <textarea id="i2vPrompt" rows="3" placeholder="选择上方选项后自动生成，也可手动修改..." readonly style="background:var(--bg);color:var(--t2);cursor:text" onclick="this.removeAttribute('readonly')"></textarea>
+      <button class="btn btn-ghost" style="margin-top:6px;font-size:11px" onclick="buildI2VPrompt()">🔄 重新生成提示词</button>
+    </div>
+
+    <div class="tip tip-info">💡 选项越详细，视频效果越精准 · MiniMax · 约2~5分钟</div>
+    <button class="btn btn-ac" id="i2vBtn" onclick="genI2V()">🎬 图片生视频</button>
+  </div>
+  <div class="sec" id="video-ms">
+    <div><div class="fl">多张图片（2~8张）</div><div class="uz" id="msZone"><input type="file" accept="image/*" multiple onchange="upMulti(this)"/><div class="uz-icon">📸</div><div class="uz-txt">上传多张图，每张生成一段视频</div><div class="up-grid" id="msPrev"></div></div><div style="font-size:10px;color:var(--t3);margin-top:4px" id="msCount"></div></div>
+    <div><div class="fl">运动风格</div><textarea id="msPrompt" rows="2" placeholder="smooth cinematic motion..."></textarea></div>
+    <div class="g2">
+      <div><div class="fl">每段时长</div><select id="msDur"><option value="3">3秒</option><option value="6" selected>6秒</option></select></div>
+      <div><div class="fl">比例</div><select id="msRatio"><option value="16:9" selected>16:9</option><option value="9:16">9:16</option></select></div>
+    </div>
+    <div class="tip tip-warn" id="msCost">💡 预计消耗 $0.00</div>
+    <button class="btn btn-ac" id="msBtn" onclick="genMs()">🎬 批量生成</button>
+  </div>
+</div>
+
+<!-- ===== 说话视频面板 ===== -->
+<div class="panel" id="panel-talk">
+  <div class="tip tip-purple">🗣 上传人物图片 + 输入台词 → AI 自动生成说话视频（支持中/英/高棉）</div>
+  <div><div class="fl">人物图片</div><div class="uz" id="talkZone"><input type="file" accept="image/*" onchange="up1(this,'talk')"/><div class="uz-icon">👤</div><div class="uz-txt">上传人物正面照（清晰面部）</div><div class="up-grid" id="talkPrev"></div></div></div>
+  <div><div class="fl">台词内容</div><textarea id="talkText" rows="4" placeholder="输入想让人物说的话...&#10;支持中文、英文、高棉语"></textarea></div>
+  <div class="g2">
+    <div><div class="fl">语言</div>
+      <select id="talkLang">
+        <option value="zh">🇨🇳 中文</option>
+        <option value="en">🇺🇸 英文</option>
+        <option value="km">🇰🇭 高棉语</option>
+      </select>
+    </div>
+    <div><div class="fl">声音风格</div>
+      <select id="talkVoice">
+        <option value="female">女声</option>
+        <option value="male">男声</option>
+      </select>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="fl">分步操作</div>
+  <button class="btn btn-blue" id="ttsOnlyBtn" onclick="ttsOnly()">🎙 只生成语音</button>
+  <button class="btn btn-orange" id="lipsyncBtn" onclick="lipsyncOnly()">👄 只做口型同步</button>
+  <button class="btn btn-ac" id="talkBtn" onclick="genTalkVideo()">✦ 一键生成说话视频</button>
+  <div class="tip tip-info">💡 约 $0.06/个 · 生成约1~3分钟</div>
+</div>
+
+<!-- ===== 剪辑混音面板 ===== -->
+<div class="panel" id="panel-edit">
+  <div class="subnav">
+    <button class="sb active" onclick="sub('edit','mix',this)">🎚 混音合并</button>
+    <button class="sb" onclick="sub('edit','concat',this)">🔗 视频拼接</button>
+    <button class="sb" onclick="sub('edit','beat',this)">🥁 鼓点剪辑</button>
+    <button class="sb" onclick="sub('edit','upscale',this)">🔬 超清放大</button>
+  </div>
+
+  <!-- 混音合并 -->
+  <div class="sec show" id="edit-mix">
+    <div class="tip tip-green">🎚 给视频添加旁白 + 背景音乐，精确控制每轨音量</div>
+    <div><div class="fl">主视频（必填）</div><div class="uz" id="mixVidZone"><input type="file" accept="video/*" onchange="upVid(this,'mixVid')"/><div class="uz-icon">🎬</div><div class="uz-txt">上传主视频</div><div id="mixVidPrev"></div></div></div>
+    <div class="divider"></div>
+    <div><div class="fl">旁白（选择一种方式）</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleNarMode('tts')">✏️ 输入文字</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleNarMode('upload')">📁 上传音频</button>
+      </div>
+      <div id="narTtsMode" style="display:flex;flex-direction:column;gap:8px">
+        <textarea id="narText" rows="3" placeholder="输入旁白文字..."></textarea>
+        <div class="g2">
+          <select id="narLang"><option value="zh">🇨🇳 中文</option><option value="en">🇺🇸 英文</option><option value="km">🇰🇭 高棉语</option></select>
+          <button class="btn btn-blue" style="font-size:11px" id="genNarBtn" onclick="generateNarration()">🎙 生成旁白</button>
+        </div>
+        <div id="narAudioPrev" style="display:none"></div>
+      </div>
+      <div id="narUploadMode" style="display:none">
+        <div class="uz" id="narAudioZone"><input type="file" accept="audio/*" onchange="upAudio(this,'nar')"/><div class="uz-icon">🎙</div><div class="uz-txt">上传旁白音频文件</div></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div><div class="fl">背景音乐（选择一种方式）</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleBgMode('lib')">🎵 音乐库</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleBgMode('upload')">📁 上传音乐</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleBgMode('ai')">✨ AI生成</button>
+      </div>
+      <div id="bgLibMode">
+        <div class="fl">选择风格</div>
+        <select id="bgGenre" onchange="filterMusic()">
+          <option value="all">全部风格</option>
+          <option value="商业">商业广告</option>
+          <option value="浪漫">浪漫抒情</option>
+          <option value="励志">励志活力</option>
+          <option value="古典">中国古典</option>
+          <option value="电子">电子舞曲</option>
+          <option value="电影">电影配乐</option>
+        </select>
+        <div class="music-lib" id="musicLib" style="margin-top:8px"></div>
+      </div>
+      <div id="bgUploadMode" style="display:none">
+        <div class="uz" id="bgAudioZone"><input type="file" accept="audio/*" onchange="upAudio(this,'bg')"/><div class="uz-icon">🎵</div><div class="uz-txt">上传背景音乐</div></div>
+      </div>
+      <div id="bgAiMode" style="display:none;flex-direction:column;gap:8px">
+        <textarea id="bgAiPrompt" rows="2" placeholder="cinematic emotional music, orchestral..."></textarea>
+        <div class="pills">
+          <div class="pill" onclick="ap('bgAiPrompt','cinematic orchestral emotional')">电影配乐</div>
+          <div class="pill" onclick="ap('bgAiPrompt','upbeat pop energetic')">活力流行</div>
+          <div class="pill" onclick="ap('bgAiPrompt','romantic piano soft')">浪漫钢琴</div>
+          <div class="pill" onclick="ap('bgAiPrompt','Chinese traditional guqin')">中国古典</div>
+          <div class="pill" onclick="ap('bgAiPrompt','EDM electronic bass drop')">电音EDM</div>
+        </div>
+        <button class="btn btn-green" id="genBgBtn" onclick="generateBgMusic()">✨ AI生成背景音乐</button>
+        <div id="bgAudioPrev" style="display:none"></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div><div class="fl">音量控制</div>
+      <div class="vol-group">
+        <div class="vol-row"><span class="vol-label">原视频声音</span><input type="range" class="vol-slider" min="0" max="2" step="0.1" value="0" id="volOrig" oninput="$('volOrigV').textContent=Math.round(this.value*100)+'%'"/><span class="vol-val" id="volOrigV">0%</span></div>
+        <div class="vol-row"><span class="vol-label">旁白音量</span><input type="range" class="vol-slider" min="0" max="2" step="0.1" value="1" id="volNar" oninput="$('volNarV').textContent=Math.round(this.value*100)+'%'"/><span class="vol-val" id="volNarV">100%</span></div>
+        <div class="vol-row"><span class="vol-label">背景音乐</span><input type="range" class="vol-slider" min="0" max="1" step="0.05" value="0.3" id="volBg" oninput="$('volBgV').textContent=Math.round(this.value*100)+'%'"/><span class="vol-val" id="volBgV">30%</span></div>
+      </div>
+    </div>
+    <div><div class="fl">音效</div>
+      <div class="g2">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);cursor:pointer"><input type="checkbox" id="fadeIn" checked> 淡入效果</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);cursor:pointer"><input type="checkbox" id="fadeOut" checked> 淡出效果</label>
+      </div>
+    </div>
+    <button class="btn btn-ac" id="mixBtn" onclick="mixAudio()">🎚 合并导出视频</button>
+  </div>
+
+
+  <!-- 视频拼接 -->
+  <div class="sec" id="edit-concat">
+    <div class="tip tip-green">🔗 上传多段视频首尾拼接，生成一个长视频（如 5段×6秒 = 30秒）</div>
+    <div>
+      <div class="fl">上传视频片段（按顺序，最多8段）</div>
+      <div class="uz" id="concatZone">
+        <input type="file" accept="video/*" multiple onchange="upConcatVids(this)"/>
+        <div class="uz-icon">🔗</div>
+        <div class="uz-txt">上传多段视频，按顺序拼接</div>
+      </div>
+      <div id="concatVidList" style="display:none;margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+      <div style="font-size:10px;color:var(--t3);margin-top:4px" id="concatCount"></div>
+    </div>
+    <div class="divider"></div>
+    <div>
+      <div class="fl">旁白（选填）</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleConcatNarMode('tts')">✏️ 输入文字</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleConcatNarMode('upload')">📁 上传音频</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleConcatNarMode('none')">❌ 不要旁白</button>
+      </div>
+      <div id="concatNarTts" style="display:flex;flex-direction:column;gap:8px">
+        <textarea id="concatNarText" rows="2" placeholder="输入旁白文字..."></textarea>
+        <div class="g2">
+          <select id="concatNarLang"><option value="zh">🇨🇳 中文</option><option value="en">🇺🇸 英文</option><option value="km">🇰🇭 高棉语</option></select>
+          <button class="btn btn-blue" style="font-size:11px" id="concatNarBtn" onclick="genConcatNar()">🎙 生成旁白</button>
+        </div>
+        <div id="concatNarPrev" style="display:none"></div>
+      </div>
+      <div id="concatNarUpload" style="display:none">
+        <div class="uz" id="concatNarZone"><input type="file" accept="audio/*" onchange="upAudio(this,'concatNar')"/><div class="uz-icon">🎙</div><div class="uz-txt">上传旁白音频</div></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div>
+      <div class="fl">背景音乐（选填）</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleConcatBgMode('lib')">🎵 音乐库</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleConcatBgMode('upload')">📁 上传</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleConcatBgMode('none')">❌ 不要音乐</button>
+      </div>
+      <div id="concatBgLib">
+        <div class="music-lib" id="concatMusicLib"></div>
+      </div>
+      <div id="concatBgUpload" style="display:none">
+        <div class="uz" id="concatBgZone"><input type="file" accept="audio/*" onchange="upAudio(this,'concatBg')"/><div class="uz-icon">🎵</div><div class="uz-txt">上传背景音乐</div></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div>
+      <div class="fl">音量控制</div>
+      <div class="vol-group">
+        <div class="vol-row"><span class="vol-label">原视频声音</span><input type="range" class="vol-slider" min="0" max="2" step="0.1" value="0" id="concatOrigVol" oninput="$('concatOrigVolV').textContent=Math.round(this.value*100)+'%'"/><span class="vol-val" id="concatOrigVolV">0%</span></div>
+        <div class="vol-row"><span class="vol-label">旁白音量</span><input type="range" class="vol-slider" min="0" max="2" step="0.1" value="1" id="concatNarVol" oninput="$('concatNarVolV').textContent=Math.round(this.value*100)+'%'"/><span class="vol-val" id="concatNarVolV">100%</span></div>
+        <div class="vol-row"><span class="vol-label">背景音乐</span><input type="range" class="vol-slider" min="0" max="1" step="0.05" value="0.3" id="concatBgVol" oninput="$('concatBgVolV').textContent=Math.round(this.value*100)+'%'"/><span class="vol-val" id="concatBgVolV">30%</span></div>
+      </div>
+    </div>
+    <button class="btn btn-ac" id="concatBtn" onclick="concatVideos()">🔗 拼接合并视频</button>
+  </div>
+
+  <!-- 鼓点剪辑 -->
+  <div class="sec" id="edit-beat">
+    <div class="tip tip-green">🥁 上传多段视频 + 音乐，按音乐鼓点自动剪辑合并</div>
+    <div><div class="fl">视频片段（可多段）</div><div class="uz" id="beatVidZone"><input type="file" accept="video/*" multiple onchange="upBeatVids(this)"/><div class="uz-icon">🎬</div><div class="uz-txt">上传视频片段（按顺序）</div><div class="up-grid" id="beatVidPrev"></div></div><div style="font-size:10px;color:var(--t3);margin-top:4px" id="beatVidCount"></div></div>
+    <div><div class="fl">背景音乐</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleBeatBgMode('lib')">🎵 音乐库</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="toggleBeatBgMode('upload')">📁 上传</button>
+      </div>
+      <div id="beatBgLib"><div class="music-lib" id="beatMusicLib"></div></div>
+      <div id="beatBgUpload" style="display:none"><div class="uz" id="beatBgZone"><input type="file" accept="audio/*" onchange="upAudio(this,'beatBg')"/><div class="uz-icon">🎵</div><div class="uz-txt">上传音乐文件</div></div></div>
+    </div>
+    <div><div class="fl">旁白（选填）</div><div class="uz" id="beatNarZone"><input type="file" accept="audio/*" onchange="upAudio(this,'beatNar')"/><div class="uz-icon">🎙</div><div class="uz-txt">上传旁白音频（选填）</div></div></div>
+    <div class="g2">
+      <div><div class="fl">背景音量</div><div class="slrow"><input type="range" min="0" max="1" step="0.05" value="0.4" id="beatBgVol" oninput="$('beatBgVolV').textContent=Math.round(this.value*100)+'%'"/><span class="slval" id="beatBgVolV">40%</span></div></div>
+      <div><div class="fl">旁白音量</div><div class="slrow"><input type="range" min="0" max="2" step="0.1" value="1" id="beatNarVol" oninput="$('beatNarVolV').textContent=Math.round(this.value*100)+'%'"/><span class="slval" id="beatNarVolV">100%</span></div></div>
+    </div>
+    <button class="btn btn-blue" onclick="detectBeats()">🥁 检测鼓点</button>
+    <div id="beatResult" style="display:none">
+      <div class="tip tip-info" id="beatInfo"></div>
+      <div class="waveform" id="waveform"><canvas class="wave-canvas" id="waveCanvas"></canvas></div>
+    </div>
+    <button class="btn btn-ac" id="beatCutBtn" onclick="beatCut()">✂️ 按鼓点剪辑合并</button>
+  </div>
+
+  <!-- 超清放大 -->
+  <div class="sec" id="edit-upscale">
+    <div class="tip tip-green">🔬 Real-ESRGAN 2x 超分辨率放大，提升视频清晰度</div>
+    <div><div class="fl">上传视频</div><div class="uz" id="upscaleZone"><input type="file" accept="video/*" onchange="upVid(this,'upscale')"/><div class="uz-icon">🔬</div><div class="uz-txt">上传需要放大的视频</div><div id="upscalePrev"></div></div></div>
+    <div class="tip tip-info">💡 Real-ESRGAN · 2x放大 · 约 $0.05~0.15</div>
+    <button class="btn btn-ac" id="upscaleBtn" onclick="upscaleVideo()">🔬 超清放大</button>
+  </div>
+</div>
+
+<!-- ===== 工具面板 ===== -->
+<div class="panel" id="panel-tools">
+  <div class="subnav">
+    <button class="sb active" onclick="sub('tools','iq',this)">反推提示词</button>
+    <button class="sb" onclick="sub('tools','syscheck',this)">系统检查</button>
+  </div>
+  <div class="sec show" id="tools-iq">
+    <div class="tip tip-info">🔍 上传任意图片，AI 自动分析生成英文提示词</div>
+    <div><div class="fl">上传图片</div><div class="uz" id="iqZone"><input type="file" accept="image/*" onchange="up1(this,'iq')"/><div class="uz-icon">🔍</div><div class="uz-txt">上传图片</div><div class="up-grid" id="iqPrev"></div></div></div>
+    <button class="btn btn-ac" id="iqBtn" onclick="interrogate()">🔍 分析图片</button>
+  </div>
+  <div class="sec" id="tools-syscheck">
+    <div class="tip tip-info">检查服务器环境和功能状态</div>
+    <button class="btn btn-blue" onclick="sysCheck()">🔍 系统检查</button>
+    <div id="sysResult"></div>
+  </div>
+</div>
+
+</aside>
+
+<main>
+  <div class="canvas" id="canvas">
+    <div class="empty" id="stEmpty">
+      <div class="empty-icon">✦</div>
+      <div class="empty-title">AI 创作工具 PRO</div>
+      <div class="empty-sub">图片生成 · 视频生成 · 说话视频<br>混音合并 · 鼓点剪辑 · 超清放大</div>
+      <div class="qgrid">
+        <div class="qcard" onclick="goTo('img',document.querySelectorAll('.nb')[0])"><div class="qc-icon">🖼</div><div class="qc-title">生成图片</div><div class="qc-sub">Flux · $0.003/张</div></div>
+        <div class="qcard" onclick="goTo('video',document.querySelectorAll('.nb')[1])"><div class="qc-icon">🎬</div><div class="qc-title">生成视频</div><div class="qc-sub">MiniMax · $0.08/个</div></div>
+        <div class="qcard" onclick="goTo('talk',document.querySelectorAll('.nb')[2])"><div class="qc-icon">🗣</div><div class="qc-title">说话视频</div><div class="qc-sub">中/英/高棉语</div></div>
+        <div class="qcard" onclick="goTo('edit',document.querySelectorAll('.nb')[3])"><div class="qc-icon">✂️</div><div class="qc-title">剪辑混音</div><div class="qc-sub">旁白+音乐+鼓点</div></div>
+      </div>
+    </div>
+    <div class="loading" id="stLoading">
+      <div class="lring"></div>
+      <div class="ltitle" id="lTitle">处理中...</div>
+      <div class="ltimer" id="lTimer">00:00</div>
+      <div class="lprog"><div class="lprogfill" id="lProg"></div></div>
+      <div class="lsub" id="lSub">请耐心等待</div>
+      <div class="lsteps" id="lSteps"></div>
+    </div>
+    <div class="errbox" id="stErr"></div>
+    <div class="result" id="stResult">
+      <div id="resultContent" style="width:100%"></div>
+      <div class="rbar" id="resultBar"></div>
+      <div class="rmeta" id="resultMeta"></div>
+    </div>
+  </div>
+  <div class="histbar">
+    <span class="histlbl">历史</span>
+    <div class="histscroll" id="histScroll"><span class="hempty">暂无记录</span></div>
+    <button class="hclear" onclick="clearHist()">清空</button>
+  </div>
+</main>
+
+<div class="modal" id="modal">
+  <button class="mclose" onclick="closeModal()">✕</button>
+  <div id="modalContent"></div>
+  <div class="mbar" id="modalBar"></div>
+</div>
+
+<script>
+// ===== 状态 =====
+const HIST_KEY='aipro_h3';
+const COST_KEY='aipro_c3';
+let totalCost=parseFloat(localStorage.getItem(COST_KEY)||'0');
+let timerIv=null, timerStart=0;
+const UPS={i2i:'',i2v:'',talk:'',iq:'',mixVid:'',beatBg:'',beatNar:'',upscale:''};
+let narAudioUrl='', bgAudioB64='', bgAudioUrl='', multiImgs=[], beatVidsB64=[], beatTimes=[];
+let selectedMusic=null;
+
+const MUSIC_LIB=[
+  {id:'m1',name:'Golden Hour',genre:'商业',url:'https://www.soundjay.com/free-music/sounds/epic-cinematic-1.mp3',icon:'🌅'},
+  {id:'m2',name:'Elegant Rose',genre:'浪漫',url:'https://www.soundjay.com/free-music/sounds/romantic-piano-1.mp3',icon:'🌹'},
+  {id:'m3',name:'Power Up',genre:'励志',url:'https://www.soundjay.com/free-music/sounds/upbeat-corporate-1.mp3',icon:'⚡'},
+  {id:'m4',name:'Lotus Dream',genre:'古典',url:'https://www.soundjay.com/free-music/sounds/chinese-traditional-1.mp3',icon:'🪷'},
+  {id:'m5',name:'Night Drop',genre:'电子',url:'https://www.soundjay.com/free-music/sounds/edm-dance-1.mp3',icon:'🌃'},
+  {id:'m6',name:'Epic Score',genre:'电影',url:'https://www.soundjay.com/free-music/sounds/cinematic-score-1.mp3',icon:'🎬'},
+  {id:'m7',name:'Soft Breeze',genre:'浪漫',url:'https://www.soundjay.com/free-music/sounds/soft-ambient-1.mp3',icon:'🍃'},
+  {id:'m8',name:'March On',genre:'励志',url:'https://www.soundjay.com/free-music/sounds/motivational-1.mp3',icon:'🏃'},
+  {id:'m9',name:'Silk Road',genre:'古典',url:'https://www.soundjay.com/free-music/sounds/asian-ambient-1.mp3',icon:'🎋'},
+  {id:'m10',name:'Bass Anthem',genre:'电子',url:'https://www.soundjay.com/free-music/sounds/electronic-1.mp3',icon:'🎛'},
+  {id:'m11',name:'Brand Story',genre:'商业',url:'https://www.soundjay.com/free-music/sounds/corporate-inspire-1.mp3',icon:'💼'},
+  {id:'m12',name:'Twilight',genre:'电影',url:'https://www.soundjay.com/free-music/sounds/dramatic-1.mp3',icon:'🌆'},
+];
+
+function $(id){return document.getElementById(id)}
+function ap(id,t){const el=$(id);el.value=(el.value.trim()?el.value.trim()+', ':'')+t;el.focus()}
+
+// ===== 导航 =====
+function goTo(tab,btn){
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('show'));
+  $('panel-'+tab).classList.add('show');
+  showSt('empty');
 }
 
-// Replicate URL 立刻下载返回 base64（彻底解决下载问题）
-async function urlToB64(url) {
-  if (!url || url.startsWith('data:')) return url;
-  try {
-    const r = await fetch(url, { timeout: 120000 });
-    if (!r.ok) return url;
-    const buffer = Buffer.from(await r.arrayBuffer());
-    const ct = r.headers.get('content-type') || 'video/mp4';
-    return `data:${ct};base64,${buffer.toString('base64')}`;
-  } catch(e) { return url; }
+function sub(panel,sec,btn){
+  const p=$('panel-'+panel);
+  p.querySelectorAll('.sb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  p.querySelectorAll('.sec').forEach(s=>s.classList.remove('show'));
+  $(panel+'-'+sec).classList.add('show');
 }
 
-async function urlsToB64(urls) {
-  return Promise.all(urls.map(u => urlToB64(u)));
+// ===== 状态 =====
+function showSt(s){
+  ['stEmpty','stLoading','stErr','stResult'].forEach(id=>{const e=$(id);if(e)e.style.display='none'});
+  const m={empty:'stEmpty',loading:'stLoading',error:'stErr',result:'stResult'};
+  const el=$(m[s]);
+  if(el)el.style.display=(s==='loading'||s==='result')?'flex':'block';
+  if(s==='loading')el.style.flexDirection='column';
 }
 
-async function b64toUrl(b64) {
-  if (!b64 || !b64.startsWith('data:')) return b64;
-  const matches = b64.match(/^data:(.+);base64,(.+)$/);
-  if (!matches) return b64;
-  const mimeType = matches[1];
-  const buffer = Buffer.from(matches[2], 'base64');
-  const form = new FormData();
-  form.append('content', buffer, { contentType: mimeType, filename: 'upload' });
-  const r = await fetch('https://api.replicate.com/v1/files', {
-    method: 'POST',
-    headers: { 'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`, ...form.getHeaders() },
-    body: form
+function startLoad(title,sub,steps=[]){
+  showSt('loading');
+  $('lTitle').textContent=title;
+  $('lSub').textContent=sub;
+  $('lProg').style.width='0%';
+  $('lSteps').innerHTML=steps.map((s,i)=>`<div class="lstep" id="ls${i}">${s}</div>`).join('');
+  timerStart=Date.now();
+  clearInterval(timerIv);
+  timerIv=setInterval(()=>{
+    const s=Math.floor((Date.now()-timerStart)/1000);
+    $('lTimer').textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  },500);
+}
+
+function setStep(i,tot){
+  document.querySelectorAll('.lstep').forEach((el,j)=>{el.classList.remove('active','done');if(j<i)el.classList.add('done');if(j===i)el.classList.add('active')});
+  if(tot>0)$('lProg').style.width=`${Math.min(95,((i+1)/tot)*100)}%`;
+}
+
+function stopLoad(){clearInterval(timerIv);$('lProg').style.width='100%'}
+function showErr(msg){stopLoad();showSt('error');$('stErr').style.display='block';$('stErr').textContent=msg}
+function setBtn(id,dis,txt){$(id).disabled=dis;$(id).textContent=txt}
+function addCost(n){totalCost+=n;localStorage.setItem(COST_KEY,totalCost.toFixed(4));$('costBadge').textContent=`消耗 $${totalCost.toFixed(3)}`}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+// ===== 上传 =====
+function up1(input,key){
+  const file=input.files[0];if(!file)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    UPS[key]=e.target.result;
+    const prevId=key+'Prev';
+    const el=$(prevId);
+    if(el)el.innerHTML=`<div class="up-item"><img src="${e.target.result}"></div>`;
+    const txt=input.parentElement.querySelector('.uz-txt');
+    if(txt)txt.textContent='点击重新上传';
+  };
+  rd.readAsDataURL(file);
+}
+
+function upVid(input,key){
+  const file=input.files[0];if(!file)return;
+  const url=URL.createObjectURL(file);
+  const prevId=key+'Prev';
+  const el=$(prevId);
+  if(el)el.innerHTML=`<video src="${url}" controls style="width:100%;border-radius:6px;margin-top:8px;max-height:100px"></video>`;
+  const rd=new FileReader();
+  rd.onload=e=>{UPS[key]=e.target.result;};
+  rd.readAsDataURL(file);
+}
+
+function upMulti(input){
+  const files=Array.from(input.files).slice(0,8);
+  multiImgs=new Array(files.length).fill('');
+  let loaded=0;
+  files.forEach((f,i)=>{
+    const rd=new FileReader();
+    rd.onload=e=>{multiImgs[i]=e.target.result;if(++loaded===files.length)renderMultiPrev()};
+    rd.readAsDataURL(f);
   });
-  const data = await r.json();
-  return data.urls?.source || data.url || b64;
 }
 
-function b64toFile(b64, ext) {
-  const matches = b64.match(/^data:(.+);base64,(.+)$/);
-  if (!matches) throw new Error('无效的base64');
-  const buffer = Buffer.from(matches[2], 'base64');
-  const filePath = path.join(TMP, `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`);
-  fs.writeFileSync(filePath, buffer);
-  return filePath;
+function renderMultiPrev(){
+  $('msPrev').innerHTML=multiImgs.map((b,i)=>b?`<div class="up-item"><img src="${b}"><button class="up-rm" onclick="multiImgs.splice(${i},1);renderMultiPrev()">×</button></div>`:'').join('');
+  $('msCount').textContent=`已选 ${multiImgs.filter(Boolean).length} 张`;
+  $('msCost').textContent=`💡 预计消耗约 $${(multiImgs.filter(Boolean).length*0.08).toFixed(2)}`;
 }
 
-function fileToB64(filePath) {
-  const ext = path.extname(filePath).slice(1);
-  const mime = ext === 'mp4' ? 'video/mp4' : ext === 'mp3' ? 'audio/mpeg' : ext === 'wav' ? 'audio/wav' : 'application/octet-stream';
-  const buffer = fs.readFileSync(filePath);
-  return `data:${mime};base64,${buffer.toString('base64')}`;
+function upBeatVids(input){
+  const files=Array.from(input.files).slice(0,8);
+  beatVidsB64=new Array(files.length).fill('');
+  let loaded=0;
+  files.forEach((f,i)=>{
+    const rd=new FileReader();
+    rd.onload=e=>{beatVidsB64[i]=e.target.result;if(++loaded===files.length)renderBeatVidPrev()};
+    rd.readAsDataURL(f);
+  });
 }
 
-async function urlToFile(url, ext) {
-  // 支持 base64 和 http URL
-  if (url && url.startsWith('data:')) return b64toFile(url, ext);
-  const r = await fetch(url);
-  const buffer = Buffer.from(await r.arrayBuffer());
-  const filePath = path.join(TMP, `${Date.now()}.${ext}`);
-  fs.writeFileSync(filePath, buffer);
-  return filePath;
+function renderBeatVidPrev(){
+  $('beatVidPrev').innerHTML=beatVidsB64.map((b,i)=>b?`<div class="up-item"><video src="${b}" style="width:64px;height:64px;object-fit:cover;border-radius:6px"></video></div>`:'').join('');
+  $('beatVidCount').textContent=`已选 ${beatVidsB64.filter(Boolean).length} 段视频`;
 }
 
-function checkFFmpeg() {
-  try { execSync('ffmpeg -version', { stdio: 'ignore' }); return true; }
-  catch { return false; }
+function upAudio(input,key){
+  const file=input.files[0];if(!file)return;
+  const url=URL.createObjectURL(file);
+  const rd=new FileReader();
+  rd.onload=e=>{
+    if(key==='nar'){narAudioUrl=url;}
+    else if(key==='bg'){bgAudioB64=e.target.result;bgAudioUrl=url;}
+    else if(key==='beatBg'){bgAudioB64=e.target.result;bgAudioUrl=url;}
+    else if(key==='beatNar'){narAudioUrl=url;}
+    else if(key==='concatNar'){concatNarAudioUrl=url;}
+    else if(key==='concatBg'){concatBgAudioB64=e.target.result;concatBgAudioUrl=url;}
+  };
+  rd.readAsDataURL(file);
+  // 显示预览
+  const prevId=key==='nar'?'narAudioPrev':key==='bg'?'bgAudioPrev':null;
+  if(prevId&&$(prevId)){
+    $(prevId).style.display='block';
+    $(prevId).innerHTML=`<div class="audio-preview"><span class="ap-icon">🎵</span><div class="ap-info"><div class="ap-name">${file.name}</div><div class="ap-dur">${(file.size/1024).toFixed(0)} KB</div></div><audio src="${url}" controls style="height:28px;flex:1"></audio></div>`;
+  }
 }
 
-function cleanFiles(files) {
-  files.forEach(f => { try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch {} });
+// ===== 音乐库 =====
+function renderMusicLib(containerId, onSelect){
+  const genre=$('bgGenre')?.value||'all';
+  const list=genre==='all'?MUSIC_LIB:MUSIC_LIB.filter(m=>m.genre===genre);
+  const el=$(containerId);
+  if(!el)return;
+  el.innerHTML=list.map(m=>`
+    <div class="music-card" id="mc_${m.id}" onclick="selectMusic('${m.id}','${m.url}','${containerId}',${JSON.stringify(onSelect)})">
+      <span class="mc-icon">${m.icon}</span>
+      <div class="mc-info"><div class="mc-name">${m.name}</div><div class="mc-genre">${m.genre}</div></div>
+    </div>`).join('');
+}
+
+function selectMusic(id, url, containerId, cb){
+  document.querySelectorAll('.music-card').forEach(c=>c.classList.remove('selected'));
+  const el=document.getElementById('mc_'+id);
+  if(el)el.classList.add('selected');
+  bgAudioUrl=url;
+  selectedMusic={id,url};
+}
+
+function filterMusic(){renderMusicLib('musicLib')}
+
+function toggleNarMode(mode){
+  $('narTtsMode').style.display=mode==='tts'?'flex':'none';
+  $('narUploadMode').style.display=mode==='upload'?'block':'none';
+}
+
+function toggleBgMode(mode){
+  $('bgLibMode').style.display=mode==='lib'?'block':'none';
+  $('bgUploadMode').style.display=mode==='upload'?'block':'none';
+  $('bgAiMode').style.display=mode==='ai'?'flex':'none';
+  if(mode==='lib')renderMusicLib('musicLib');
+}
+
+function toggleBeatBgMode(mode){
+  $('beatBgLib').style.display=mode==='lib'?'block':'none';
+  $('beatBgUpload').style.display=mode==='upload'?'block':'none';
+  if(mode==='lib')renderMusicLib('beatMusicLib');
 }
 
 // ===== 图片生成 =====
-app.post('/api/generate', async (req, res) => {
-  try {
-    const output = await replicate.run('black-forest-labs/flux-schnell', { input: req.body.input });
-    const urls = extractUrls(output);
-    const b64s = await urlsToB64(urls);
-    res.json({ status: 'succeeded', output: b64s });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
+async function genImage(){
+  const prompt=$('imgPrompt').value.trim();
+  if(!prompt){showErr('请输入图片描述');return}
+  setBtn('imgBtn',true,'⟳ 生成中...');
+  const steps=parseInt($('imgSteps').value),count=parseInt($('imgCount').value),seedVal=$('imgSeed').value;
+  const input={prompt,num_outputs:count,aspect_ratio:$('imgRatio').value,num_inference_steps:steps,output_format:$('imgFmt').value,output_quality:95};
+  if(seedVal)input.seed=parseInt(seedVal);
+  startLoad('生成图片中...','Flux Schnell · 约5~15秒',['提交请求','AI生成','完成']);
+  const t0=Date.now();
+  try{
+    setStep(1,3);
+    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({input})});
+    setStep(2,3);const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    if(!d.output?.length)throw new Error('未返回结果');
+    stopLoad();addCost((steps/4)*0.003*count);
+    renderImgResult(d.output,((Date.now()-t0)/1000).toFixed(1),(steps/4)*0.003*count);
+    saveHist(d.output.map(u=>({type:'image',url:u})));
+  }catch(e){showErr('❌ '+e.message)}
+  finally{setBtn('imgBtn',false,'✦ 生成图片')}
+}
+
+async function genI2I(){
+  if(!UPS.i2i){showErr('请上传参考图片');return}
+  const prompt=$('i2iPrompt').value.trim();
+  if(!prompt){showErr('请输入描述');return}
+  setBtn('i2iBtn',true,'⟳ 生成中...');
+  startLoad('图生图中...','Flux Dev · 约30~60秒',['上传图片','AI生成','完成']);
+  const t0=Date.now();
+  try{
+    setStep(1,3);
+    const r=await fetch('/api/img2img',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:UPS.i2i,prompt,strength:parseFloat($('i2iStr').value)})});
+    setStep(2,3);const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    stopLoad();addCost(0.025);
+    renderImgResult(d.output,((Date.now()-t0)/1000).toFixed(1),0.025);
+    saveHist(d.output.map(u=>({type:'image',url:u})));
+  }catch(e){showErr('❌ '+e.message)}
+  finally{setBtn('i2iBtn',false,'✦ 图生图')}
+}
+
+// ===== 图生视频提示词构建 =====
+function buildI2VPrompt() {
+  const camera = $('i2vCamera')?.value || '';
+  const action = $('i2vAction')?.value || '';
+  const mood = $('i2vMood')?.value || '';
+  const speed = $('i2vSpeed')?.value || '';
+  const extra = $('i2vExtra')?.value.trim() || '';
+  const parts = [camera, action, mood, speed, extra].filter(Boolean);
+  if (parts.length === 0) {
+    $('i2vPrompt').value = 'smooth cinematic motion, professional video quality';
+  } else {
+    $('i2vPrompt').value = parts.join(', ') + ', cinematic professional quality, 8K';
+  }
+  $('i2vPrompt').removeAttribute('readonly');
+}
+
+// 监听下拉改变自动生成
+document.addEventListener('DOMContentLoaded', () => {
+  ['i2vCamera','i2vAction','i2vMood','i2vSpeed'].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener('change', buildI2VPrompt);
+  });
 });
 
-// ===== 图生图 =====
-app.post('/api/img2img', async (req, res) => {
-  try {
-    const { image, prompt, strength } = req.body;
-    const imgUrl = await b64toUrl(image);
-    const output = await replicate.run('black-forest-labs/flux-dev', {
-      input: { prompt, image: imgUrl, strength: strength || 0.75, num_inference_steps: 28, guidance: 3.5, num_outputs: 1, output_format: 'jpg', output_quality: 95 }
-    });
-    const urls = extractUrls(output);
-    const b64s = await urlsToB64(urls);
-    res.json({ status: 'succeeded', output: b64s });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-});
+// ===== 视频生成 =====
+async function genT2V(){
+  const prompt=$('vidPrompt').value.trim();
+  if(!prompt){showErr('请输入描述');return}
+  setBtn('t2vBtn',true,'⟳ 生成中...');
+  startLoad('生成视频中...','MiniMax · 约2~5分钟',['提交','生成画面','合成','完成']);
+  const t0=Date.now();
+  const iv=setInterval(()=>{setStep(Math.min(2,Math.floor((Date.now()-t0)/60000)),4)},15000);
+  try{
+    const r=await fetch('/api/txt2video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,duration:parseInt($('vidDur').value),ratio:$('vidRatio').value})});
+    clearInterval(iv);setStep(3,4);stopLoad();
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    addCost(0.08);
+    renderVidResult(d.output[0],((Date.now()-t0)/1000).toFixed(1),0.08,'文字生视频');
+    saveHist([{type:'video',url:d.output[0]}]);
+  }catch(e){clearInterval(iv);showErr('❌ '+e.message)}
+  finally{setBtn('t2vBtn',false,'🎬 生成视频')}
+}
 
-// ===== 反推提示词 =====
-app.post('/api/interrogate', async (req, res) => {
-  try {
-    const imgUrl = await b64toUrl(req.body.image);
-    const output = await replicate.run(
-      'pharmapsychotic/clip-interrogator:8151e1c9f47e696fa316146a2e35812ccf79cfc9eba05b11c7f450155102af70',
-      { input: { image: imgUrl, clip_model_name: 'ViT-L-14/openai', mode: 'best' } }
-    );
-    res.json({ status: 'succeeded', prompt: output });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-});
+async function genI2V(){
+  if(!UPS.i2v){showErr('请上传图片');return}
+  setBtn('i2vBtn',true,'⟳ 生成中...');
+  // 如果没有手动建立提示词，自动构建
+  if (!$('i2vPrompt').value.trim()) buildI2VPrompt();
+  const prompt=$('i2vPrompt').value.trim()||'smooth cinematic motion, professional quality';
+  startLoad('图片生视频中...','MiniMax · 约2~5分钟',['上传','分析','生成','完成']);
+  const t0=Date.now();
+  const iv=setInterval(()=>{setStep(Math.min(2,Math.floor((Date.now()-t0)/60000)),4)},15000);
+  try{
+    const r=await fetch('/api/img2video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:UPS.i2v,prompt,duration:parseInt($('i2vDur').value)})});
+    clearInterval(iv);setStep(3,4);stopLoad();
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    addCost(0.08);
+    renderVidResult(d.output[0],((Date.now()-t0)/1000).toFixed(1),0.08,'图生视频');
+    saveHist([{type:'video',url:d.output[0]}]);
+  }catch(e){clearInterval(iv);showErr('❌ '+e.message)}
+  finally{setBtn('i2vBtn',false,'🎬 图片生视频')}
+}
 
-// ===== 文字生视频 =====
-app.post('/api/txt2video', async (req, res) => {
-  try {
-    const { prompt, duration, ratio } = req.body;
-    const output = await replicate.run('minimax/video-01', {
-      input: { prompt, duration: 6, ratio: ratio || '16:9', resolution: '1080p', prompt_optimizer: true }
-    });
-    const urls = extractUrls(output);
-    const b64s = await urlsToB64(urls);
-    res.json({ status: 'succeeded', output: b64s });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-});
-
-// ===== 图生视频 =====
-app.post('/api/img2video', async (req, res) => {
-  try {
-    const { image, prompt, duration } = req.body;
-    const imgUrl = await b64toUrl(image);
-    // MiniMax 只支持 6 秒，强制锁定
-    const dur = 6;
-    const output = await replicate.run('minimax/video-01', {
-      input: { prompt: prompt || 'smooth cinematic motion', first_frame_image: imgUrl, duration: dur, ratio: '16:9', resolution: '1080p', prompt_optimizer: true }
-    });
-    const urls = extractUrls(output);
-    const b64s = await urlsToB64(urls);
-    res.json({ status: 'succeeded', output: b64s });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-});
-
-// ===== 多图生视频 =====
-app.post('/api/imgs2video', async (req, res) => {
-  try {
-    const { images, prompt, duration_per_image } = req.body;
-    if (!images || images.length < 2) throw new Error('至少需要2张图片');
-    const results = [];
-    for (let i = 0; i < images.length; i++) {
-      const imgUrl = await b64toUrl(images[i]);
-      const output = await replicate.run('minimax/video-01', {
-        input: { prompt: prompt || 'smooth cinematic motion', first_frame_image: imgUrl, duration: 6, ratio: '16:9', resolution: '1080p', prompt_optimizer: true }
-      });
-      const urls = extractUrls(output);
-      if (urls.length > 0) {
-        const b64 = await urlToB64(urls[0]);
-        results.push(b64);
-      }
+async function genMs(){
+  const imgs=multiImgs.filter(Boolean);
+  if(imgs.length<2){showErr('请上传至少2张图片');return}
+  setBtn('msBtn',true,'⟳ 生成中...');
+  const prompt=$('msPrompt').value.trim()||'smooth cinematic motion';
+  const dur=parseInt($('msDur').value);
+  startLoad(`批量生成 ${imgs.length} 段视频...`,`每段约2~5分钟`,imgs.map((_,i)=>`第 ${i+1} 段`));
+  const t0=Date.now();const results=[];
+  try{
+    for(let i=0;i<imgs.length;i++){
+      setStep(i,imgs.length);
+      $('lTitle').textContent=`生成第 ${i+1}/${imgs.length} 段...`;
+      const r=await fetch('/api/img2video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:imgs[i],prompt,duration:dur})});
+      const d=await r.json();
+      if(r.ok&&d.output?.length){results.push(d.output[0]);addCost(0.08);renderMultiVid(results,i+1,imgs.length)}
     }
-    res.json({ status: 'succeeded', output: results });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-});
+    stopLoad();
+    $('resultMeta').innerHTML=`全部完成 · 耗时 <b>${((Date.now()-t0)/1000).toFixed(0)}s</b> · 消耗 <b>$${(results.length*0.08).toFixed(2)}</b>`;
+    saveHist(results.map(u=>({type:'video',url:u})));
+  }catch(e){showErr('❌ '+e.message)}
+  finally{setBtn('msBtn',false,'🎬 批量生成')}
+}
 
-// ===== TTS =====
-app.post('/api/tts', async (req, res) => {
-  try {
-    const { text, language, voice } = req.body;
-    let audioUrl;
-    if (language === 'zh') {
-      const output = await replicate.run(
-        'lucataco/xtts-v2:684bc3855b37866c0c65add2ff39c1df5be61233acfa24cf5cf74cd5a7b2b70',
-        { input: { text, speaker: voice || 'https://replicate.delivery/pbxt/Jt79w0xsT64R1JsiJ0HERH6UMNOUEf5nqVmE66YqNZ8CDLC/male.wav', language: 'zh-cn', cleanup_voice: true } }
-      );
-      audioUrl = extractUrls(output)[0];
-    } else if (language === 'km') {
-      const output = await replicate.run(
-        'facebook/mms-tts:3716b043f9feaf1c7d82d56cc33caa8f7bd4f282a84ad40a7b0f87e31c7e91b',
-        { input: { text, language: 'khm' } }
-      );
-      audioUrl = extractUrls(output)[0];
-    } else {
-      const output = await replicate.run(
-        'jaaari/kokoro-82m:f559560eb822dc509045f3921a1921234918b91739db4bf3daab2169b71c7a13',
-        { input: { text, voice: voice || 'af_bella', speed: 1.0 } }
-      );
-      audioUrl = extractUrls(output)[0];
-    }
-    const b64 = await urlToB64(audioUrl);
-    res.json({ status: 'succeeded', audio_url: b64 });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-});
+// ===== 说话视频 =====
+async function ttsOnly(){
+  const text=$('talkText').value.trim();
+  if(!text){showErr('请输入台词');return}
+  setBtn('ttsOnlyBtn',true,'⟳ 生成中...');
+  startLoad('生成语音中...','TTS · 约10~30秒',['生成语音','完成']);
+  try{
+    setStep(0,2);
+    const lang=$('talkLang').value;
+    const voice=$('talkVoice').value==='male'?'https://replicate.delivery/pbxt/Jt79w0xsT64R1JsiJ0HERH6UMNOUEf5nqVmE66YqNZ8CDLC/male.wav':'https://replicate.delivery/pbxt/KjpeDLXm5ySkmZZlRFqhxhBQGhSSE5yHBPqH8OcRAD67dtIA/female.wav';
+    const r=await fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,language:lang,voice})});
+    setStep(1,2);stopLoad();
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    narAudioUrl=d.audio_url;
+    showSt('result');
+    $('resultContent').innerHTML=`<div class="abox"><div class="fl" style="margin-bottom:12px">生成的语音</div><audio src="${d.audio_url}" controls style="width:100%"></audio></div>`;
+    $('resultBar').innerHTML=`<a class="rbb primary" href="${d.audio_url}" download="narration.wav" target="_blank">⬇ 下载语音</a>`;
+    $('resultMeta').textContent='语音生成成功，可在混音合并中使用';
+  }catch(e){showErr('❌ '+e.message)}
+  finally{setBtn('ttsOnlyBtn',false,'🎙 只生成语音')}
+}
 
-// ===== 口型同步 =====
-app.post('/api/lipsync', async (req, res) => {
-  try {
-    const { image, audio_url } = req.body;
-    const imgUrl = await b64toUrl(image);
-    const audUrl = audio_url.startsWith('data:') ? await b64toUrl(audio_url) : audio_url;
-    const output = await replicate.run(
-      'devxpy/easy-wav2lip:84e5c1b5a80ad8f5b9b9a0c4c46d11085e8a36da97a5e11b9f7ff6c5a39879d',
-      { input: { face: imgUrl, audio: audUrl, pads: '0 10 0 0', smooth: true, resize_factor: 1 } }
-    );
-    const urls = extractUrls(output);
-    const b64s = await urlsToB64(urls);
-    res.json({ status: 'succeeded', output: b64s });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-});
+async function lipsyncOnly(){
+  if(!UPS.talk){showErr('请上传人物图片');return}
+  if(!narAudioUrl){showErr('请先生成语音');return}
+  setBtn('lipsyncBtn',true,'⟳ 处理中...');
+  startLoad('口型同步中...','Wav2Lip · 约1~3分钟',['上传图片','同步口型','完成']);
+  const t0=Date.now();
+  try{
+    setStep(1,3);
+    const r=await fetch('/api/lipsync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:UPS.talk,audio_url:narAudioUrl})});
+    setStep(2,3);stopLoad();
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    addCost(0.05);
+    renderVidResult(d.output[0],((Date.now()-t0)/1000).toFixed(1),0.05,'口型同步');
+    saveHist([{type:'video',url:d.output[0]}]);
+  }catch(e){showErr('❌ '+e.message)}
+  finally{setBtn('lipsyncBtn',false,'👄 只做口型同步')}
+}
 
-// ===== 一键说话视频 =====
-app.post('/api/talking-video', async (req, res) => {
-  try {
-    const { image, text, language, voice } = req.body;
-    if (!image) throw new Error('请上传人物图片');
-    if (!text) throw new Error('请输入台词');
-    let audioUrl;
-    if (language === 'zh') {
-      const output = await replicate.run(
-        'lucataco/xtts-v2:684bc3855b37866c0c65add2ff39c1df5be61233acfa24cf5cf74cd5a7b2b70',
-        { input: { text, speaker: voice || 'https://replicate.delivery/pbxt/Jt79w0xsT64R1JsiJ0HERH6UMNOUEf5nqVmE66YqNZ8CDLC/male.wav', language: 'zh-cn', cleanup_voice: true } }
-      );
-      audioUrl = extractUrls(output)[0];
-    } else if (language === 'km') {
-      const output = await replicate.run(
-        'facebook/mms-tts:3716b043f9feaf1c7d82d56cc33caa8f7bd4f282a84ad40a7b0f87e31c7e91b',
-        { input: { text, language: 'khm' } }
-      );
-      audioUrl = extractUrls(output)[0];
-    } else {
-      const output = await replicate.run(
-        'jaaari/kokoro-82m:f559560eb822dc509045f3921a1921234918b91739db4bf3daab2169b71c7a13',
-        { input: { text, voice: voice || 'af_bella', speed: 1.0 } }
-      );
-      audioUrl = extractUrls(output)[0];
-    }
-    if (!audioUrl) throw new Error('语音生成失败');
-    const imgUrl = await b64toUrl(image);
-    const audUrl = await b64toUrl(await urlToB64(audioUrl));
-    const output = await replicate.run(
-      'devxpy/easy-wav2lip:84e5c1b5a80ad8f5b9b9a0c4c46d11085e8a36da97a5e11b9f7ff6c5a39879d',
-      { input: { face: imgUrl, audio: audUrl, pads: '0 10 0 0', smooth: true, resize_factor: 1 } }
-    );
-    const urls = extractUrls(output);
-    const b64s = await urlsToB64(urls);
-    const audioB64 = await urlToB64(audioUrl);
-    res.json({ status: 'succeeded', output: b64s, audio_url: audioB64 });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-});
+async function genTalkVideo(){
+  if(!UPS.talk){showErr('请上传人物图片');return}
+  const text=$('talkText').value.trim();
+  if(!text){showErr('请输入台词');return}
+  setBtn('talkBtn',true,'⟳ 生成中...');
+  startLoad('生成说话视频中...','TTS + Wav2Lip · 约2~4分钟',['生成语音','上传图片','口型同步','完成']);
+  const t0=Date.now();
+  try{
+    setStep(0,4);
+    const lang=$('talkLang').value;
+    const voice=$('talkVoice').value==='male'?'https://replicate.delivery/pbxt/Jt79w0xsT64R1JsiJ0HERH6UMNOUEf5nqVmE66YqNZ8CDLC/male.wav':'';
+    const r=await fetch('/api/talking-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:UPS.talk,text,language:lang,voice})});
+    setStep(3,4);stopLoad();
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    addCost(0.06);narAudioUrl=d.audio_url||narAudioUrl;
+    renderVidResult(d.output[0],((Date.now()-t0)/1000).toFixed(1),0.06,'说话视频');
+    saveHist([{type:'video',url:d.output[0]}]);
+  }catch(e){showErr('❌ '+e.message)}
+  finally{setBtn('talkBtn',false,'✦ 一键生成说话视频')}
+}
 
-// ===== AI 加音乐 =====
-app.post('/api/video-music', async (req, res) => {
-  try {
-    const { video_url, music_prompt } = req.body;
-    const vidUrl = await b64toUrl(video_url);
-    const output = await replicate.run('zsxkib/mmaudio:4b9f801a1b25a443f2d8d27a3169f4d73f0a4327e2374580fde35cde1e3e77e4', {
-      input: { video: vidUrl, prompt: music_prompt || 'cinematic background music', duration: 8, num_steps: 25, cfg_strength: 4.5 }
-    });
-    const urls = extractUrls(output);
-    const b64s = await urlsToB64(urls);
-    res.json({ status: 'succeeded', output: b64s });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-});
+// ===== 旁白生成 =====
+async function generateNarration(){
+  const text=$('narText').value.trim();
+  if(!text){showErr('请输入旁白文字');return}
+  setBtn('genNarBtn',true,'⟳ 生成中...');
+  try{
+    const lang=$('narLang').value;
+    const r=await fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,language:lang})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    narAudioUrl=d.audio_url;
+    $('narAudioPrev').style.display='block';
+    $('narAudioPrev').innerHTML=`<div class="audio-preview"><span class="ap-icon">🎙</span><div class="ap-info"><div class="ap-name">旁白已生成</div></div><audio src="${d.audio_url}" controls style="height:28px;flex:1"></audio></div>`;
+  }catch(e){alert('❌ '+e.message)}
+  finally{setBtn('genNarBtn',false,'🎙 生成旁白')}
+}
 
-// ===== 超清放大 =====
-app.post('/api/video-upscale', async (req, res) => {
-  try {
-    const { video_url } = req.body;
-    const vidUrl = await b64toUrl(video_url);
-    const output = await replicate.run('fewjative/real-esrgan-video:4dc519a6a27e1bb9497bb44fd9c89f07ddad9b65cfae5c0fd6fb5fc39eeebd11', {
-      input: { video_path: vidUrl, scale: 2 }
-    });
-    const urls = extractUrls(output);
-    const b64s = await urlsToB64(urls);
-    res.json({ status: 'succeeded', output: b64s });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-});
+// ===== AI生成背景音乐 =====
+async function generateBgMusic(){
+  const prompt=$('bgAiPrompt').value.trim()||'cinematic background music';
+  setBtn('genBgBtn',true,'⟳ 生成中...');
+  try{
+    const r=await fetch('/api/video-music',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({video_url:'',music_prompt:prompt})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    bgAudioUrl=d.output[0];
+    $('bgAudioPrev').style.display='block';
+    $('bgAudioPrev').innerHTML=`<div class="audio-preview"><span class="ap-icon">🎵</span><div class="ap-info"><div class="ap-name">AI背景音乐已生成</div></div><audio src="${bgAudioUrl}" controls style="height:28px;flex:1"></audio></div>`;
+  }catch(e){alert('❌ '+e.message)}
+  finally{setBtn('genBgBtn',false,'✨ AI生成背景音乐')}
+}
 
-// ===== FFmpeg 混音合并 =====
-app.post('/api/mix-audio', async (req, res) => {
-  const files = [];
-  try {
-    const { video_b64, narration_url, music_url, music_b64, narration_volume, music_volume, original_volume, fade_in, fade_out } = req.body;
-    if (!checkFFmpeg()) throw new Error('FFmpeg 未安装');
-    if (!video_b64) throw new Error('请提供视频');
-    const videoFile = b64toFile(video_b64, 'mp4'); files.push(videoFile);
-    const narVol = narration_volume || 1.0;
-    const bgVol = music_volume || 0.3;
-    const origVol = original_volume || 0.0;
-    const outputFile = path.join(TMP, `mixed_${Date.now()}.mp4`); files.push(outputFile);
-    const fadeIn = fade_in ? `,afade=t=in:st=0:d=1` : '';
-    const fadeOut = fade_out ? `,afade=t=out:st=5:d=1` : '';
-    if (narration_url && (music_url || music_b64)) {
-      const narFile = await urlToFile(narration_url, 'wav'); files.push(narFile);
-      const bgFile = music_b64 ? b64toFile(music_b64, 'mp3') : await urlToFile(music_url, 'mp3'); files.push(bgFile);
-      execSync(`ffmpeg -y -i "${videoFile}" -i "${narFile}" -i "${bgFile}" -filter_complex "[0:a]volume=${origVol}[orig];[1:a]volume=${narVol}[nar];[2:a]volume=${bgVol},aloop=loop=-1:size=2e+09${fadeIn}${fadeOut}[bg];[orig][nar][bg]amix=inputs=3:duration=first[aout]" -map 0:v -map "[aout]" -c:v copy -c:a aac -shortest "${outputFile}"`, { timeout: 120000 });
-    } else if (narration_url) {
-      const narFile = await urlToFile(narration_url, 'wav'); files.push(narFile);
-      execSync(`ffmpeg -y -i "${videoFile}" -i "${narFile}" -filter_complex "[0:a]volume=${origVol}[orig];[1:a]volume=${narVol}[nar];[orig][nar]amix=inputs=2:duration=first[aout]" -map 0:v -map "[aout]" -c:v copy -c:a aac -shortest "${outputFile}"`, { timeout: 120000 });
-    } else if (music_url || music_b64) {
-      const bgFile = music_b64 ? b64toFile(music_b64, 'mp3') : await urlToFile(music_url, 'mp3'); files.push(bgFile);
-      execSync(`ffmpeg -y -i "${videoFile}" -i "${bgFile}" -filter_complex "[0:a]volume=${origVol}[orig];[1:a]volume=${bgVol},aloop=loop=-1:size=2e+09${fadeIn}${fadeOut}[bg];[orig][bg]amix=inputs=2:duration=first[aout]" -map 0:v -map "[aout]" -c:v copy -c:a aac -shortest "${outputFile}"`, { timeout: 120000 });
-    } else { throw new Error('请至少提供旁白或背景音乐'); }
-    res.json({ status: 'succeeded', output: fileToB64(outputFile) });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-  finally { cleanFiles(files); }
-});
-
-// ===== 视频拼接合并 =====
-app.post('/api/concat-videos', async (req, res) => {
-  const files = [];
-  try {
-    const { videos_b64, narration_url, music_url, music_b64, music_volume, narration_volume, original_volume } = req.body;
-    if (!videos_b64 || videos_b64.length < 2) throw new Error('请至少上传2段视频');
-    if (!checkFFmpeg()) throw new Error('FFmpeg 未安装');
-    const videoFiles = [];
-    for (let i = 0; i < videos_b64.length; i++) {
-      const f = b64toFile(videos_b64[i], 'mp4'); files.push(f);
-      const reencoded = path.join(TMP, `re_${i}_${Date.now()}.mp4`); files.push(reencoded);
-      execSync(`ffmpeg -y -i "${f}" -c:v libx264 -preset fast -crf 23 -an "${reencoded}"`, { timeout: 60000 });
-      videoFiles.push(reencoded);
-    }
-    const listFile = path.join(TMP, `list_${Date.now()}.txt`); files.push(listFile);
-    fs.writeFileSync(listFile, videoFiles.map(f => `file '${f}'`).join('\n'));
-    const concatFile = path.join(TMP, `concat_${Date.now()}.mp4`); files.push(concatFile);
-    execSync(`ffmpeg -y -f concat -safe 0 -i "${listFile}" -c copy "${concatFile}"`, { timeout: 120000 });
-    const outputFile = path.join(TMP, `output_${Date.now()}.mp4`); files.push(outputFile);
-    const narVol = narration_volume || 1.0;
-    const bgVol = music_volume || 0.3;
-    const origVol = original_volume || 0.0;
-    const hasBg = music_url || music_b64;
-    const hasNar = narration_url;
-    if (hasBg && hasNar) {
-      const bgFile = music_b64 ? b64toFile(music_b64, 'mp3') : await urlToFile(music_url, 'mp3'); files.push(bgFile);
-      const narFile = await urlToFile(narration_url, 'wav'); files.push(narFile);
-      execSync(`ffmpeg -y -i "${concatFile}" -i "${bgFile}" -i "${narFile}" -filter_complex "[0:a]volume=${origVol}[orig];[1:a]volume=${bgVol},aloop=loop=-1:size=2e+09,afade=t=in:st=0:d=1,afade=t=out:st=25:d=2[bg];[2:a]volume=${narVol}[nar];[orig][bg][nar]amix=inputs=3:duration=first[aout]" -map 0:v -map "[aout]" -c:v copy -c:a aac -shortest "${outputFile}"`, { timeout: 120000 });
-    } else if (hasBg) {
-      const bgFile = music_b64 ? b64toFile(music_b64, 'mp3') : await urlToFile(music_url, 'mp3'); files.push(bgFile);
-      execSync(`ffmpeg -y -i "${concatFile}" -i "${bgFile}" -filter_complex "[0:a]volume=${origVol}[orig];[1:a]volume=${bgVol},aloop=loop=-1:size=2e+09,afade=t=in:st=0:d=1,afade=t=out:st=25:d=2[bg];[orig][bg]amix=inputs=2:duration=first[aout]" -map 0:v -map "[aout]" -c:v copy -c:a aac -shortest "${outputFile}"`, { timeout: 120000 });
-    } else if (hasNar) {
-      const narFile = await urlToFile(narration_url, 'wav'); files.push(narFile);
-      execSync(`ffmpeg -y -i "${concatFile}" -i "${narFile}" -filter_complex "[1:a]volume=${narVol}[nar]" -map 0:v -map "[nar]" -c:v copy -c:a aac -shortest "${outputFile}"`, { timeout: 120000 });
-    } else {
-      fs.copyFileSync(concatFile, outputFile);
-    }
-    res.json({ status: 'succeeded', output: fileToB64(outputFile), segments: videos_b64.length });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-  finally { cleanFiles(files); }
-});
+// ===== 混音合并 =====
+async function mixAudio(){
+  if(!UPS.mixVid){showErr('请上传主视频');return}
+  if(!narAudioUrl&&!bgAudioUrl&&!selectedMusic){showErr('请至少添加旁白或背景音乐');return}
+  setBtn('mixBtn',true,'⟳ 处理中...');
+  startLoad('混音合并中...','FFmpeg · 约30~60秒',['读取视频','混合音轨','导出视频']);
+  const t0=Date.now();
+  try{
+    setStep(1,3);
+    const payload={
+      video_b64:UPS.mixVid,
+      narration_url:narAudioUrl||null,
+      music_url:selectedMusic?.url||bgAudioUrl||null,
+      music_b64:bgAudioB64||null,
+      narration_volume:parseFloat($('volNar').value),
+      music_volume:parseFloat($('volBg').value),
+      original_volume:parseFloat($('volOrig').value),
+      fade_in:$('fadeIn').checked,
+      fade_out:$('fadeOut').checked
+    };
+    const r=await fetch('/api/mix-audio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    setStep(2,3);stopLoad();
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    // 结果是base64
+    const vidSrc=d.output;
+    showSt('result');
+    $('resultContent').innerHTML=`<div class="vplayer"><video src="${vidSrc}" controls autoplay loop playsinline></video><div class="vinfo"><span>混音视频</span><span>${((Date.now()-t0)/1000).toFixed(1)}s</span></div></div>`;
+    $('resultBar').innerHTML=`<a class="rbb primary" href="${vidSrc}" download="mixed_video_${Date.now()}.mp4">⬇ 下载视频</a><button class="rbb" onclick="openModal('video','${vidSrc}')">🔍 全屏</button>`;
+    $('resultMeta').innerHTML=`混音完成 · 耗时 <b>${((Date.now()-t0)/1000).toFixed(1)}s</b>`;
+  }catch(e){showErr('❌ '+e.message)}
+  finally{setBtn('mixBtn',false,'🎚 合并导出视频')}
+}
 
 // ===== 鼓点检测 =====
-app.post('/api/detect-beats', async (req, res) => {
-  const files = [];
-  try {
-    const { audio_url, audio_b64 } = req.body;
-    if (!checkFFmpeg()) throw new Error('FFmpeg 未安装');
-    const audioFile = audio_b64 ? b64toFile(audio_b64, 'mp3') : await urlToFile(audio_url, 'mp3');
-    files.push(audioFile);
-    const result = execSync(`ffprobe -v quiet -print_format json -show_streams "${audioFile}"`).toString();
-    const info = JSON.parse(result);
-    const duration = parseFloat(info.streams[0]?.duration || 30);
-    const bpm = 120;
-    const beatInterval = 60 / bpm;
-    const beats = [];
-    for (let t = 0; t < duration; t += beatInterval) beats.push(parseFloat(t.toFixed(3)));
-    res.json({ status: 'succeeded', beats, bpm, duration });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-  finally { cleanFiles(files); }
-});
+async function detectBeats(){
+  if(!bgAudioUrl&&!bgAudioB64&&!selectedMusic){showErr('请先选择背景音乐');return}
+  try{
+    const payload=selectedMusic?{audio_url:selectedMusic.url}:bgAudioB64?{audio_b64:bgAudioB64}:{audio_url:bgAudioUrl};
+    const r=await fetch('/api/detect-beats',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    beatTimes=d.beats;
+    $('beatResult').style.display='block';
+    $('beatInfo').textContent=`🥁 检测到 ${d.beats.length} 个节拍 · BPM: ${d.bpm} · 时长: ${d.duration.toFixed(1)}s`;
+    drawWaveform(d.beats, d.duration);
+  }catch(e){alert('❌ '+e.message)}
+}
 
-// ===== 按鼓点剪辑 =====
-app.post('/api/beat-cut', async (req, res) => {
-  const files = [];
-  try {
-    const { videos_b64, beats, music_b64, music_url, music_volume, narration_url, narration_volume } = req.body;
-    if (!videos_b64 || videos_b64.length === 0) throw new Error('请提供视频片段');
-    if (!checkFFmpeg()) throw new Error('FFmpeg 未安装');
-    const videoFiles = videos_b64.map(b64 => { const f = b64toFile(b64, 'mp4'); files.push(f); return f; });
-    const segDurations = beats ? beats.slice(1).map((b, i) => b - beats[i]) : videoFiles.map(() => 6);
-    const listFile = path.join(TMP, `list_${Date.now()}.txt`); files.push(listFile);
-    let listContent = '';
-    for (let i = 0; i < videoFiles.length; i++) {
-      const dur = segDurations[i % segDurations.length] || 6;
-      const trimFile = path.join(TMP, `trim_${i}_${Date.now()}.mp4`); files.push(trimFile);
-      execSync(`ffmpeg -y -i "${videoFiles[i]}" -t ${dur} -c:v libx264 -an "${trimFile}"`, { timeout: 30000 });
-      listContent += `file '${trimFile}'\n`;
-    }
-    fs.writeFileSync(listFile, listContent);
-    const concatFile = path.join(TMP, `concat_${Date.now()}.mp4`); files.push(concatFile);
-    execSync(`ffmpeg -y -f concat -safe 0 -i "${listFile}" -c copy "${concatFile}"`, { timeout: 60000 });
-    const outputFile = path.join(TMP, `output_${Date.now()}.mp4`); files.push(outputFile);
-    const bgVol = music_volume || 0.4;
-    const narVol = narration_volume || 1.0;
-    const hasBg = music_b64 || music_url;
-    const hasNar = narration_url;
-    if (hasBg && hasNar) {
-      const bgFile = music_b64 ? b64toFile(music_b64, 'mp3') : await urlToFile(music_url, 'mp3'); files.push(bgFile);
-      const narFile = await urlToFile(narration_url, 'wav'); files.push(narFile);
-      execSync(`ffmpeg -y -i "${concatFile}" -i "${bgFile}" -i "${narFile}" -filter_complex "[1:a]volume=${bgVol},aloop=loop=-1:size=2e+09,afade=t=in:st=0:d=1[bg];[2:a]volume=${narVol}[nar];[bg][nar]amix=inputs=2:duration=first[aout]" -map 0:v -map "[aout]" -c:v copy -c:a aac -shortest "${outputFile}"`, { timeout: 120000 });
-    } else if (hasBg) {
-      const bgFile = music_b64 ? b64toFile(music_b64, 'mp3') : await urlToFile(music_url, 'mp3'); files.push(bgFile);
-      execSync(`ffmpeg -y -i "${concatFile}" -i "${bgFile}" -filter_complex "[1:a]volume=${bgVol},aloop=loop=-1:size=2e+09,afade=t=in:st=0:d=1,afade=t=out:st=25:d=2[bg]" -map 0:v -map "[bg]" -c:v copy -c:a aac -shortest "${outputFile}"`, { timeout: 120000 });
-    } else if (hasNar) {
-      const narFile = await urlToFile(narration_url, 'wav'); files.push(narFile);
-      execSync(`ffmpeg -y -i "${concatFile}" -i "${narFile}" -filter_complex "[1:a]volume=${narVol}[nar]" -map 0:v -map "[nar]" -c:v copy -c:a aac -shortest "${outputFile}"`, { timeout: 120000 });
-    } else {
-      fs.copyFileSync(concatFile, outputFile);
-    }
-    res.json({ status: 'succeeded', output: fileToB64(outputFile) });
-  } catch(e) { res.status(500).json({ detail: e.message }); }
-  finally { cleanFiles(files); }
-});
+function drawWaveform(beats, duration){
+  const canvas=$('waveCanvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=canvas.offsetWidth;canvas.height=60;
+  ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,canvas.width,canvas.height);
+  // 绘制假波形
+  ctx.strokeStyle='rgba(74,158,255,0.4)';ctx.lineWidth=1;ctx.beginPath();
+  for(let x=0;x<canvas.width;x++){const y=30+Math.sin(x*0.1)*15*Math.random();if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
+  ctx.stroke();
+  // 绘制鼓点
+  beats.forEach(t=>{
+    const x=(t/duration)*canvas.width;
+    ctx.fillStyle='rgba(232,255,74,0.6)';
+    ctx.fillRect(x,0,2,60);
+  });
+}
+
+async function beatCut(){
+  const vids=beatVidsB64.filter(Boolean);
+  if(vids.length===0){showErr('请上传视频片段');return}
+  setBtn('beatCutBtn',true,'⟳ 剪辑中...');
+  startLoad('按鼓点剪辑合并中...','FFmpeg · 约1~3分钟',['分析节拍','剪切片段','合并视频','混入音乐','完成']);
+  const t0=Date.now();
+  try{
+    setStep(1,5);
+    const bgUrl=selectedMusic?.url||bgAudioUrl||null;
+    const payload={
+      videos_b64:vids,
+      beats:beatTimes.length>0?beatTimes:null,
+      music_url:bgUrl,
+      music_b64:bgAudioB64||null,
+      music_volume:parseFloat($('beatBgVol').value),
+      narration_url:narAudioUrl||null,
+      narration_volume:parseFloat($('beatNarVol').value)
+    };
+    const r=await fetch('/api/beat-cut',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    setStep(4,5);stopLoad();
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    const vidSrc=d.output;
+    showSt('result');
+    $('resultContent').innerHTML=`<div class="vplayer"><video src="${vidSrc}" controls autoplay loop playsinline></video><div class="vinfo"><span>鼓点剪辑视频</span><span>${((Date.now()-t0)/1000).toFixed(1)}s</span></div></div>`;
+    $('resultBar').innerHTML=`<a class="rbb primary" href="${vidSrc}" download="beat_video_${Date.now()}.mp4">⬇ 下载视频</a>`;
+    $('resultMeta').innerHTML=`剪辑完成 · 耗时 <b>${((Date.now()-t0)/1000).toFixed(1)}s</b>`;
+  }catch(e){showErr('❌ '+e.message)}
+  finally{setBtn('beatCutBtn',false,'✂️ 按鼓点剪辑合并')}
+}
+
+// ===== 超清放大 =====
+async function upscaleVideo(){
+  if(!UPS.upscale){showErr('请上传视频');return}
+  setBtn('upscaleBtn',true,'⟳ 处理中...');
+  startLoad('超清放大中...','Real-ESRGAN 2x · 约1~3分钟',['上传视频','AI超分','输出']);
+  const t0=Date.now();
+  try{
+    setStep(1,3);
+    const r=await fetch('/api/video-upscale',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({video_url:UPS.upscale})});
+    setStep(2,3);stopLoad();
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    addCost(0.1);
+    renderVidResult(d.output[0],((Date.now()-t0)/1000).toFixed(1),0.1,'超清放大2x');
+    saveHist([{type:'video',url:d.output[0]}]);
+  }catch(e){showErr('❌ '+e.message)}
+  finally{setBtn('upscaleBtn',false,'🔬 超清放大')}
+}
+
+// ===== 反推提示词 =====
+async function interrogate(){
+  if(!UPS.iq){showErr('请上传图片');return}
+  setBtn('iqBtn',true,'⟳ 分析中...');
+  startLoad('分析图片中...','CLIP · 约30~60秒',['上传','AI分析','完成']);
+  try{
+    setStep(1,3);
+    const r=await fetch('/api/interrogate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:UPS.iq})});
+    setStep(2,3);stopLoad();
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'失败');
+    showSt('result');
+    $('resultContent').innerHTML=`<div class="abox"><div class="fl" style="margin-bottom:10px">反推提示词结果</div><div class="atext" id="iqText">${d.prompt}</div><div class="aactions"><button class="ab" onclick="navigator.clipboard.writeText($('iqText').textContent).then(()=>{this.textContent='✓ 已复制';setTimeout(()=>this.textContent='📋 复制',2000)})">📋 复制</button><button class="ab ac" onclick="$('imgPrompt').value=$('iqText').textContent;goTo('img',document.querySelectorAll('.nb')[0])">→ 用于生图</button><button class="ab" onclick="$('vidPrompt').value=$('iqText').textContent;goTo('video',document.querySelectorAll('.nb')[1])">→ 用于生视频</button></div></div>`;
+    $('resultBar').innerHTML='';
+  }catch(e){showErr('❌ '+e.message)}
+  finally{setBtn('iqBtn',false,'🔍 分析图片')}
+}
 
 // ===== 系统检查 =====
-app.get('/api/system-check', (req, res) => {
-  const ffmpeg = checkFFmpeg();
-  let ffmpegVersion = '';
-  if (ffmpeg) { try { ffmpegVersion = execSync('ffmpeg -version').toString().split('\n')[0]; } catch {} }
-  res.json({ ffmpeg, ffmpegVersion, tmpDir: TMP });
-});
+async function sysCheck(){
+  try{
+    const r=await fetch('/api/system-check');
+    const d=await r.json();
+    $('sysResult').innerHTML=`<div class="tip ${d.ffmpeg?'tip-green':'tip-warn'}" style="margin-top:10px">FFmpeg: ${d.ffmpeg?'✅ 已安装':'❌ 未安装 - 混音功能不可用'}<br>${d.ffmpegVersion?d.ffmpegVersion:''}</div>`;
+    $('ffmpegBadge').textContent=d.ffmpeg?'FFmpeg ✅':'FFmpeg ❌';
+  }catch(e){$('sysResult').innerHTML=`<div class="tip tip-warn" style="margin-top:10px">检查失败: ${e.message}</div>`}
+}
 
-app.listen(3099, () => console.log('OK: http://localhost:3099'));
+// ===== 渲染 =====
+function renderImgResult(urls,elapsed,cost){
+  showSt('result');
+  const n=urls.length;
+  let html=`<div class="igrid c${n}">`;
+  urls.forEach(url=>{html+=`<div class="icard"><img src="${url}" loading="lazy"><div class="iov"><button class="ovb" onclick="dlImg('${url}',this)">⬇ 下载</button><button class="ovb" onclick="openModal('image','${url}')">🔍 预览</button></div></div>`});
+  html+='</div>';
+  $('resultContent').innerHTML=html;
+  $('resultBar').innerHTML=`<button class="rbb" onclick="dlImg('${urls[0]}',this)">⬇ 下载图片</button><button class="rbb" onclick="cp('${urls[0]}',this)">🔗 链接</button>`;
+  $('resultMeta').innerHTML=`耗时 <b>${elapsed}s</b> · 消耗 <b>$${cost.toFixed(3)}</b>`;
+}
+
+function renderVidResult(url,elapsed,cost,label){
+  showSt('result');
+  $('resultContent').innerHTML=`<div class="vplayer"><video src="${url}" controls autoplay loop playsinline></video><div class="vinfo"><span>${label}</span><span>${elapsed}s · $${cost.toFixed(3)}</span></div></div>`;
+  $('resultBar').innerHTML=`<button class="rbb primary" onclick="dlVideo('${url}',this)">⬇ 下载MP4</button><button class="rbb" onclick="openModal('video','${url}')">🔍 全屏</button><button class="rbb" onclick="cp('${url}',this)">🔗 链接</button>`;
+  $('resultMeta').innerHTML=`${label} · 耗时 <b>${elapsed}s</b> · 消耗 <b>$${cost.toFixed(2)}</b>`;
+}
+
+function renderMultiVid(urls,done,total){
+  showSt('result');
+  let html=`<div style="font-size:12px;color:var(--t2);margin-bottom:10px">✅ ${done}/${total} 段完成</div><div class="multivid">`;
+  urls.forEach((url,i)=>{html+=`<div class="vcard"><video src="${url}" controls loop playsinline muted></video><div class="vcbar"><span style="font-size:10px;color:var(--t3)">第 ${i+1} 段</span><button onclick="dlVideo('${url}',this)" style="font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer">⬇</button></div></div>`});
+  html+='</div>';
+  $('resultContent').innerHTML=html;
+  $('resultBar').innerHTML='';
+}
+
+// ===== 预览 =====
+function openModal(type,url){
+  const m=$('modal'),c=$('modalContent'),b=$('modalBar');
+  if(type==='image'){c.innerHTML=`<img src="${url}" class="mmedia">`;b.innerHTML=`<button class="mbtn" onclick="dlImg('${url}',this)">⬇ 下载</button><button class="mbtn" onclick="closeModal()">关闭</button>`}
+  else{c.innerHTML=`<video src="${url}" controls autoplay loop playsinline style="max-width:94vw;max-height:80vh;border-radius:12px"></video>`;b.innerHTML=`<button class="mbtn" onclick="dlVideo('${url}',this)">⬇ 下载</button><button class="mbtn" onclick="closeModal()">关闭</button>`}
+  m.classList.add('open');
+}
+function closeModal(){$('modal').classList.remove('open');$('modalContent').innerHTML=''}
+$('modal').onclick=e=>{if(e.target===e.currentTarget)closeModal()}
+
+function cp(url,btn){navigator.clipboard.writeText(url).then(()=>{btn.textContent='✓ 已复制';setTimeout(()=>btn.textContent='🔗 链接',2000)})}
+
+// 强制下载（绕过 URL 过期问题）
+async function dlVideo(url, btn) {
+  const orig = btn ? btn.textContent : '';
+  try {
+    if (btn) { btn.textContent = '⟳ 下载中...'; btn.disabled = true; }
+    // 如果是 base64 直接下载
+    if (url.startsWith('data:')) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'video_' + Date.now() + '.mp4';
+      a.click();
+      return;
+    }
+    // 通过服务器代理下载
+    const r = await fetch('/api/proxy-download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    if (!r.ok) throw new Error('下载失败');
+    const blob = await r.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = 'video_' + Date.now() + '.mp4';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+  } catch(e) {
+    // 降级：直接打开链接
+    window.open(url, '_blank');
+  } finally {
+    if (btn) { btn.textContent = orig; btn.disabled = false; }
+  }
+}
+
+async function dlImg(url, btn) {
+  const orig = btn ? btn.textContent : '';
+  try {
+    if (btn) { btn.textContent = '⟳ 下载中...'; btn.disabled = true; }
+    const r = await fetch('/api/proxy-download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    if (!r.ok) throw new Error('下载失败');
+    const blob = await r.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = 'image_' + Date.now() + '.jpg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+  } catch(e) {
+    window.open(url, '_blank');
+  } finally {
+    if (btn) { btn.textContent = orig; btn.disabled = false; }
+  }
+}
+
+// ===== 历史 =====
+function getHist(){try{return JSON.parse(localStorage.getItem(HIST_KEY)||'[]')}catch{return[]}}
+function saveHist(items){const h=getHist();h.unshift(...items);localStorage.setItem(HIST_KEY,JSON.stringify(h.slice(0,60)));renderHist()}
+function clearHist(){if(confirm('确定清空？')){localStorage.removeItem(HIST_KEY);renderHist()}}
+function renderHist(){
+  const h=getHist();
+  const scroll=$('histScroll');
+  if(!h.length){scroll.innerHTML='<span class="hempty">暂无记录</span>';return}
+  scroll.innerHTML='';
+  h.forEach(item=>{
+    if(item.type==='image'){const img=document.createElement('img');img.className='himg';img.src=item.url;img.onerror=()=>img.remove();img.onclick=()=>openModal('image',item.url);scroll.appendChild(img)}
+    else{const div=document.createElement('div');div.className='hvid';div.innerHTML=`<video src="${item.url}" muted preload="metadata"></video><div class="hvid-play">▶</div>`;div.onclick=()=>openModal('video',item.url);scroll.appendChild(div)}
+  });
+}
+
+
+// ===== 视频拼接变量 =====
+let concatVidsB64 = [];
+let concatNarAudioUrl = '';
+let concatBgAudioUrl = '';
+let concatBgAudioB64 = '';
+let concatSelectedMusic = null;
+
+function upConcatVids(input) {
+  const files = Array.from(input.files).slice(0, 8);
+  concatVidsB64 = new Array(files.length).fill('');
+  let loaded = 0;
+  files.forEach((f, i) => {
+    const rd = new FileReader();
+    rd.onload = e => {
+      concatVidsB64[i] = e.target.result;
+      if (++loaded === files.length) renderConcatList();
+    };
+    rd.readAsDataURL(f);
+  });
+}
+
+function renderConcatList() {
+  const list = $('concatVidList');
+  list.style.display = 'flex';
+  list.innerHTML = concatVidsB64.filter(Boolean).map((b, i) => `
+    <div style="display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px 10px">
+      <span style="font-size:11px;color:var(--t3);width:20px">${i+1}</span>
+      <video src="${b}" style="width:80px;height:46px;object-fit:cover;border-radius:5px" muted></video>
+      <div style="flex:1">
+        <div style="font-size:11px;color:var(--t2)">片段 ${i+1}</div>
+        <div style="font-size:10px;color:var(--t3)">点击拖动排序</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <button style="background:var(--s3);border:1px solid var(--b1);border-radius:4px;color:var(--t2);font-size:11px;padding:2px 6px;cursor:pointer" onclick="moveConcatVid(${i},-1)">↑</button>
+        <button style="background:var(--s3);border:1px solid var(--b1);border-radius:4px;color:var(--t2);font-size:11px;padding:2px 6px;cursor:pointer" onclick="moveConcatVid(${i},1)">↓</button>
+      </div>
+      <button style="background:rgba(255,74,74,.15);border:1px solid rgba(255,74,74,.3);border-radius:4px;color:var(--red);font-size:11px;padding:4px 8px;cursor:pointer" onclick="removeConcatVid(${i})">删除</button>
+    </div>
+  `).join('');
+  $('concatCount').textContent = `共 ${concatVidsB64.filter(Boolean).length} 段视频，预计总时长约 ${concatVidsB64.filter(Boolean).length * 6} 秒`;
+}
+
+function moveConcatVid(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= concatVidsB64.length) return;
+  [concatVidsB64[i], concatVidsB64[j]] = [concatVidsB64[j], concatVidsB64[i]];
+  renderConcatList();
+}
+
+function removeConcatVid(i) {
+  concatVidsB64.splice(i, 1);
+  renderConcatList();
+}
+
+function toggleConcatNarMode(mode) {
+  $('concatNarTts').style.display = mode === 'tts' ? 'flex' : 'none';
+  $('concatNarUpload').style.display = mode === 'upload' ? 'block' : 'none';
+  if (mode === 'none') concatNarAudioUrl = '';
+}
+
+function toggleConcatBgMode(mode) {
+  $('concatBgLib').style.display = mode === 'lib' ? 'block' : 'none';
+  $('concatBgUpload').style.display = mode === 'upload' ? 'block' : 'none';
+  if (mode === 'none') { concatBgAudioUrl = ''; concatBgAudioB64 = ''; concatSelectedMusic = null; }
+  if (mode === 'lib') renderConcatMusicLib();
+}
+
+function renderConcatMusicLib() {
+  const el = $('concatMusicLib');
+  if (!el) return;
+  el.innerHTML = MUSIC_LIB.map(m => `
+    <div class="music-card" id="cmc_${m.id}" onclick="selectConcatMusic('${m.id}','${m.url}')">
+      <span class="mc-icon">${m.icon}</span>
+      <div class="mc-info"><div class="mc-name">${m.name}</div><div class="mc-genre">${m.genre}</div></div>
+    </div>`).join('');
+}
+
+function selectConcatMusic(id, url) {
+  document.querySelectorAll('[id^=cmc_]').forEach(c => c.classList.remove('selected'));
+  const el = document.getElementById('cmc_' + id);
+  if (el) el.classList.add('selected');
+  concatBgAudioUrl = url;
+  concatSelectedMusic = { id, url };
+}
+
+async function genConcatNar() {
+  const text = $('concatNarText').value.trim();
+  if (!text) { alert('请输入旁白文字'); return; }
+  setBtn('concatNarBtn', true, '⟳ 生成中...');
+  try {
+    const r = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, language: $('concatNarLang').value }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || '失败');
+    concatNarAudioUrl = d.audio_url;
+    $('concatNarPrev').style.display = 'block';
+    $('concatNarPrev').innerHTML = `<div class="audio-preview"><span class="ap-icon">🎙</span><div class="ap-info"><div class="ap-name">旁白已生成</div></div><audio src="${d.audio_url}" controls style="height:28px;flex:1"></audio></div>`;
+  } catch(e) { alert('❌ ' + e.message); }
+  finally { setBtn('concatNarBtn', false, '🎙 生成旁白'); }
+}
+
+async function concatVideos() {
+  const vids = concatVidsB64.filter(Boolean);
+  if (vids.length < 2) { showErr('请至少上传2段视频'); return; }
+  setBtn('concatBtn', true, '⟳ 拼接中...');
+  startLoad(
+    `拼接 ${vids.length} 段视频中...`,
+    `FFmpeg · 预计总时长约 ${vids.length * 6} 秒`,
+    vids.map((_, i) => `处理片段 ${i+1}`).concat(['混入音轨', '导出完整视频'])
+  );
+  const t0 = Date.now();
+  try {
+    setStep(0, vids.length + 2);
+    const payload = {
+      videos_b64: vids,
+      narration_url: concatNarAudioUrl || null,
+      music_url: concatSelectedMusic?.url || concatBgAudioUrl || null,
+      music_b64: concatBgAudioB64 || null,
+      music_volume: parseFloat($('concatBgVol').value),
+      narration_volume: parseFloat($('concatNarVol').value),
+      original_volume: parseFloat($('concatOrigVol').value)
+    };
+    // 模拟进度
+    let step = 0;
+    const iv = setInterval(() => { step = Math.min(step + 1, vids.length); setStep(step, vids.length + 2); }, 3000);
+    const r = await fetch('/api/concat-videos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    clearInterval(iv);
+    setStep(vids.length + 1, vids.length + 2);
+    stopLoad();
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || '失败');
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+    showSt('result');
+    $('resultContent').innerHTML = `
+      <div class="vplayer">
+        <video src="${d.output}" controls autoplay loop playsinline></video>
+        <div class="vinfo">
+          <span>🔗 拼接视频 · ${vids.length} 段合并</span>
+          <span>${elapsed}s</span>
+        </div>
+      </div>`;
+    $('resultBar').innerHTML = `<a class="rbb primary" href="${d.output}" download="concat_video_${Date.now()}.mp4">⬇ 下载完整视频</a><button class="rbb" onclick="openModal('video','${d.output}')">🔍 全屏预览</button>`;
+    $('resultMeta').innerHTML = `${vids.length} 段拼接完成 · 耗时 <b>${elapsed}s</b>`;
+  } catch(e) { showErr('❌ ' + e.message); }
+  finally { setBtn('concatBtn', false, '🔗 拼接合并视频'); }
+}
+
+// ===== 初始化 =====
+$('costBadge').textContent=`消耗 $${totalCost.toFixed(3)}`;
+renderMusicLib('musicLib');
+renderHist();
+sysCheck();
+</script>
+</body>
+</html>
