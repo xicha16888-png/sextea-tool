@@ -292,7 +292,7 @@ main{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
     <div><div class="fl">多张图片（2~8张）</div><div class="uz" id="msZone"><input type="file" accept="image/*" multiple onchange="upMulti(this)"/><div class="uz-icon">📸</div><div class="uz-txt">上传多张图，每张生成一段视频</div><div class="up-grid" id="msPrev"></div></div><div style="font-size:10px;color:var(--t3);margin-top:4px" id="msCount"></div></div>
     <div><div class="fl">运动风格</div><textarea id="msPrompt" rows="2" placeholder="smooth cinematic motion..."></textarea></div>
     <div class="g2">
-      <div><div class="fl">每段时长</div><select id="msDur"><option value="3" selected>3秒</option><option value="6">6秒</option></select></div>
+      <div><div class="fl">每段时长</div><select id="msDur"><option value="3">3秒</option><option value="6" selected>6秒</option></select></div>
       <div><div class="fl">比例</div><select id="msRatio"><option value="16:9" selected>16:9</option><option value="9:16">9:16</option></select></div>
     </div>
     <div class="tip tip-warn" id="msCost">💡 预计消耗 $0.00</div>
@@ -1117,24 +1117,24 @@ function renderImgResult(urls,elapsed,cost){
   showSt('result');
   const n=urls.length;
   let html=`<div class="igrid c${n}">`;
-  urls.forEach(url=>{html+=`<div class="icard"><img src="${url}" loading="lazy"><div class="iov"><a class="ovb" href="${url}" download="ai_${Date.now()}.jpg" target="_blank">⬇ 下载</a><button class="ovb" onclick="openModal('image','${url}')">🔍 预览</button></div></div>`});
+  urls.forEach(url=>{html+=`<div class="icard"><img src="${url}" loading="lazy"><div class="iov"><button class="ovb" onclick="dlImg('${url}',this)">⬇ 下载</button><button class="ovb" onclick="openModal('image','${url}')">🔍 预览</button></div></div>`});
   html+='</div>';
   $('resultContent').innerHTML=html;
-  $('resultBar').innerHTML=`<a class="rbb" href="${urls[0]}" download="ai_${Date.now()}.jpg" target="_blank">⬇ 下载</a><button class="rbb" onclick="cp('${urls[0]}',this)">🔗 链接</button>`;
+  $('resultBar').innerHTML=`<button class="rbb" onclick="dlImg('${urls[0]}',this)">⬇ 下载图片</button><button class="rbb" onclick="cp('${urls[0]}',this)">🔗 链接</button>`;
   $('resultMeta').innerHTML=`耗时 <b>${elapsed}s</b> · 消耗 <b>$${cost.toFixed(3)}</b>`;
 }
 
 function renderVidResult(url,elapsed,cost,label){
   showSt('result');
   $('resultContent').innerHTML=`<div class="vplayer"><video src="${url}" controls autoplay loop playsinline></video><div class="vinfo"><span>${label}</span><span>${elapsed}s · $${cost.toFixed(3)}</span></div></div>`;
-  $('resultBar').innerHTML=`<a class="rbb primary" href="${url}" download="ai_video_${Date.now()}.mp4" target="_blank">⬇ 下载MP4</a><button class="rbb" onclick="openModal('video','${url}')">🔍 全屏</button><button class="rbb" onclick="cp('${url}',this)">🔗 链接</button>`;
+  $('resultBar').innerHTML=`<button class="rbb primary" onclick="dlVideo('${url}',this)">⬇ 下载MP4</button><button class="rbb" onclick="openModal('video','${url}')">🔍 全屏</button><button class="rbb" onclick="cp('${url}',this)">🔗 链接</button>`;
   $('resultMeta').innerHTML=`${label} · 耗时 <b>${elapsed}s</b> · 消耗 <b>$${cost.toFixed(2)}</b>`;
 }
 
 function renderMultiVid(urls,done,total){
   showSt('result');
   let html=`<div style="font-size:12px;color:var(--t2);margin-bottom:10px">✅ ${done}/${total} 段完成</div><div class="multivid">`;
-  urls.forEach((url,i)=>{html+=`<div class="vcard"><video src="${url}" controls loop playsinline muted></video><div class="vcbar"><span style="font-size:10px;color:var(--t3)">第 ${i+1} 段</span><a href="${url}" download="v${i+1}.mp4" target="_blank" style="font-size:11px;color:var(--blue)">⬇</a></div></div>`});
+  urls.forEach((url,i)=>{html+=`<div class="vcard"><video src="${url}" controls loop playsinline muted></video><div class="vcbar"><span style="font-size:10px;color:var(--t3)">第 ${i+1} 段</span><button onclick="dlVideo('${url}',this)" style="font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer">⬇</button></div></div>`});
   html+='</div>';
   $('resultContent').innerHTML=html;
   $('resultBar').innerHTML='';
@@ -1143,14 +1143,77 @@ function renderMultiVid(urls,done,total){
 // ===== 预览 =====
 function openModal(type,url){
   const m=$('modal'),c=$('modalContent'),b=$('modalBar');
-  if(type==='image'){c.innerHTML=`<img src="${url}" class="mmedia">`;b.innerHTML=`<a class="mbtn" href="${url}" download="ai_${Date.now()}.jpg" target="_blank">⬇ 下载</a><button class="mbtn" onclick="closeModal()">关闭</button>`}
-  else{c.innerHTML=`<video src="${url}" controls autoplay loop playsinline style="max-width:94vw;max-height:80vh;border-radius:12px"></video>`;b.innerHTML=`<a class="mbtn" href="${url}" download="ai_video_${Date.now()}.mp4" target="_blank">⬇ 下载</a><button class="mbtn" onclick="closeModal()">关闭</button>`}
+  if(type==='image'){c.innerHTML=`<img src="${url}" class="mmedia">`;b.innerHTML=`<button class="mbtn" onclick="dlImg('${url}',this)">⬇ 下载</button><button class="mbtn" onclick="closeModal()">关闭</button>`}
+  else{c.innerHTML=`<video src="${url}" controls autoplay loop playsinline style="max-width:94vw;max-height:80vh;border-radius:12px"></video>`;b.innerHTML=`<button class="mbtn" onclick="dlVideo('${url}',this)">⬇ 下载</button><button class="mbtn" onclick="closeModal()">关闭</button>`}
   m.classList.add('open');
 }
 function closeModal(){$('modal').classList.remove('open');$('modalContent').innerHTML=''}
 $('modal').onclick=e=>{if(e.target===e.currentTarget)closeModal()}
 
 function cp(url,btn){navigator.clipboard.writeText(url).then(()=>{btn.textContent='✓ 已复制';setTimeout(()=>btn.textContent='🔗 链接',2000)})}
+
+// 强制下载（绕过 URL 过期问题）
+async function dlVideo(url, btn) {
+  const orig = btn ? btn.textContent : '';
+  try {
+    if (btn) { btn.textContent = '⟳ 下载中...'; btn.disabled = true; }
+    // 如果是 base64 直接下载
+    if (url.startsWith('data:')) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'video_' + Date.now() + '.mp4';
+      a.click();
+      return;
+    }
+    // 通过服务器代理下载
+    const r = await fetch('/api/proxy-download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    if (!r.ok) throw new Error('下载失败');
+    const blob = await r.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = 'video_' + Date.now() + '.mp4';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+  } catch(e) {
+    // 降级：直接打开链接
+    window.open(url, '_blank');
+  } finally {
+    if (btn) { btn.textContent = orig; btn.disabled = false; }
+  }
+}
+
+async function dlImg(url, btn) {
+  const orig = btn ? btn.textContent : '';
+  try {
+    if (btn) { btn.textContent = '⟳ 下载中...'; btn.disabled = true; }
+    const r = await fetch('/api/proxy-download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    if (!r.ok) throw new Error('下载失败');
+    const blob = await r.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = 'image_' + Date.now() + '.jpg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+  } catch(e) {
+    window.open(url, '_blank');
+  } finally {
+    if (btn) { btn.textContent = orig; btn.disabled = false; }
+  }
+}
 
 // ===== 历史 =====
 function getHist(){try{return JSON.parse(localStorage.getItem(HIST_KEY)||'[]')}catch{return[]}}
